@@ -12,7 +12,6 @@ func healthCheckHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 
-
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello World!")
 }
@@ -36,4 +35,5 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(listenAddr, mux))
 }
+
 
