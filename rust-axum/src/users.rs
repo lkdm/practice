@@ -3,19 +3,20 @@ use axum::{
     response::Json,
 };
 use axum_extra::routing::Resource;
+use chrono::NaiveDateTime;
 use serde::Serialize;
 use sqlx::{query, query_as};
 
-use crate::types::{DateTime, Identifier};
+use crate::types::Identifier;
 
 use super::{AppState, Db};
 
 #[derive(Debug, sqlx::FromRow, Serialize)]
 struct User {
     id: Identifier,
-    created_date: DateTime,
-    modified_date: DateTime,
-    deleted_date: Option<DateTime>,
+    created_date: NaiveDateTime,
+    modified_date: NaiveDateTime,
+    deleted_date: Option<NaiveDateTime>,
 }
 
 #[derive(Clone)]
@@ -45,8 +46,7 @@ impl Users {
     }
 
     pub async fn find_by_id(&self, id: Identifier) -> sqlx::Result<User> {
-        let id_str: String = id.into();
-        query_as!(User, "SELECT * FROM users WHERE id = ?", id_str)
+        query_as!(User, "SELECT * FROM users WHERE id = ?", id)
             .fetch_one(&self.db)
             .await
     }
