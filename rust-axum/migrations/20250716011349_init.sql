@@ -3,7 +3,7 @@ PRAGMA recursive_triggers = ON;
 
 -- Add migration script here
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY,
+  id BLOB NOT NULL PRIMARY KEY,
   created_date TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
   modified_date TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
   deleted_date TEXT

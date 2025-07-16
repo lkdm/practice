@@ -1,3 +1,4 @@
+use crate::types::Identifier;
 use axum::{
     extract::{FromRef, Path, State},
     response::Json,
@@ -5,9 +6,8 @@ use axum::{
 use axum_extra::routing::Resource;
 use chrono::NaiveDateTime;
 use serde::Serialize;
+use sqlx::types::Uuid;
 use sqlx::{query, query_as};
-
-use crate::types::Identifier;
 
 use super::{AppState, Db};
 
@@ -39,16 +39,35 @@ impl Users {
     pub async fn all(&self) -> sqlx::Result<Vec<User>> {
         query_as!(
             User,
-            "SELECT id, created_date, modified_date, deleted_date FROM users"
+            r#"
+                SELECT
+                    id as "id: Identifier",
+                    created_date as "created_date: NaiveDateTime",
+                    modified_date as "modified_date: NaiveDateTime",
+                    deleted_date as "deleted_date: NaiveDateTime"
+                FROM
+                    users
+            "#
         )
         .fetch_all(&self.db)
         .await
     }
 
     pub async fn find_by_id(&self, id: Identifier) -> sqlx::Result<User> {
-        query_as!(User, "SELECT * FROM users WHERE id = ?", id)
-            .fetch_one(&self.db)
-            .await
+        query_as!(
+            User,
+            r#"
+                SELECT 
+                    id as "id: Identifier",
+                    created_date as "created_date: NaiveDateTime",
+                    modified_date as "modified_date: NaiveDateTime",
+                    deleted_date as "deleted_date: NaiveDateTime"
+                FROM users WHERE id = ?
+            "#,
+            id
+        )
+        .fetch_one(&self.db)
+        .await
     }
 
     // ... other queries ...
