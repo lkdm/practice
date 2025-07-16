@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::{net::SocketAddr, time::Duration};
+use std::{env, net::SocketAddr, time::Duration};
 
 use axum::Router;
 use http::Method;
@@ -11,6 +11,7 @@ use crate::config::Config;
 
 pub mod config;
 pub mod error;
+pub mod types;
 pub mod users;
 
 /// Crate result type
@@ -26,9 +27,11 @@ struct AppState {
 async fn main() -> Result<()> {
     let config = Config::parse();
 
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env");
+
     let db = SqlitePoolOptions::new()
         .max_connections(1)
-        .connect(":memory:")
+        .connect(&database_url)
         .await
         .expect("could not start database");
 
@@ -62,4 +65,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

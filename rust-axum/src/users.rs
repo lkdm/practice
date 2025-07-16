@@ -1,17 +1,21 @@
 use axum::{
-    extract::{FromRef, FromRequest, Path, State},
+    extract::{FromRef, Path, State},
     response::Json,
 };
 use axum_extra::routing::Resource;
 use serde::Serialize;
-use sqlx::query;
+use sqlx::{query, query_as};
+
+use crate::types::{DateTime, Identifier};
 
 use super::{AppState, Db};
 
-#[derive(sqlx::FromRow, Serialize)]
+#[derive(Debug, sqlx::FromRow, Serialize)]
 struct User {
-    id: i32,
-    name: String,
+    id: Identifier,
+    created_date: DateTime,
+    modified_date: DateTime,
+    deleted_date: Option<DateTime>,
 }
 
 #[derive(Clone)]
@@ -32,11 +36,17 @@ impl Users {
     }
 
     pub async fn all(&self) -> sqlx::Result<Vec<User>> {
-        query!("SELECT * FROM users").fetch_all(&self.db).await
+        query_as!(
+            User,
+            "SELECT id, created_date, modified_date, deleted_date FROM users"
+        )
+        .fetch_all(&self.db)
+        .await
     }
 
-    pub async fn find_by_id(&self, id: i64) -> sqlx::Result<User> {
-        query!("SELECT * FROM users WHERE id = ?", id)
+    pub async fn find_by_id(&self, id: Identifier) -> sqlx::Result<User> {
+        let id_str: String = id.into();
+        query_as!(User, "SELECT * FROM users WHERE id = ?", id_str)
             .fetch_one(&self.db)
             .await
     }
@@ -50,8 +60,8 @@ async fn index(queries: State<Users>) -> crate::Result<Json<Vec<User>>> {
     Ok(Json(users))
 }
 
-async fn show(queries: State<Users>, id: Path<i64>) -> crate::Result<Json<User>> {
-    let user = queries.find_by_id(*id).await?;
+async fn show(queries: State<Users>, id: Path<Identifier>) -> crate::Result<Json<User>> {
+    let user = queries.find_by_id(id.clone()).await?;
     Ok(Json(user))
 }
 
