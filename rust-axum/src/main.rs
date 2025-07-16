@@ -1,8 +1,8 @@
 use clap::Parser;
 use std::{env, net::SocketAddr, time::Duration};
 
-use axum::Router;
-use http::Method;
+use axum::{Router, response::IntoResponse};
+use http::{Method, StatusCode};
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::net::TcpListener;
 use tower_http::{normalize_path::NormalizePathLayer, timeout::TimeoutLayer};
@@ -11,6 +11,7 @@ use crate::config::Config;
 
 pub mod config;
 pub mod error;
+pub mod health;
 pub mod types;
 pub mod users;
 
@@ -19,7 +20,7 @@ pub type Result<T, E = crate::error::Error> = std::result::Result<T, E>;
 pub type Db = sqlx::SqlitePool;
 
 #[derive(Clone)]
-struct AppState {
+pub struct AppState {
     db: Db,
 }
 
@@ -37,7 +38,12 @@ async fn main() -> Result<()> {
 
     let state = AppState { db };
 
-    let app: Router = Router::new().merge(users::router()).with_state(state);
+    let api_v1 = Router::new().merge(health::router()).merge(users::router());
+
+    let app: Router = Router::new()
+        .nest("/v1", api_v1)
+        .fallback(handler_404)
+        .with_state(state);
 
     let service: Router = app
         .layer(
@@ -64,4 +70,8 @@ async fn main() -> Result<()> {
         .expect("could not serve http service");
 
     Ok(())
+}
+
+pub async fn handler_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "Not found")
 }

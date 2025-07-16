@@ -1,13 +1,18 @@
-use chrono::{NaiveDate, NaiveDateTime};
 use core::fmt;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
 use std::option::Option;
-use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, sqlx::Type, Clone)]
 #[sqlx(transparent)]
+/// A newtype abstraction over UUID
 pub struct Identifier(pub Uuid);
+
+impl Identifier {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
 
 impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -24,14 +29,5 @@ impl From<Identifier> for String {
 impl From<Uuid> for Identifier {
     fn from(uuid: Uuid) -> Self {
         Identifier(uuid)
-    }
-}
-
-struct MyDateTime(chrono::NaiveDateTime);
-
-impl std::str::FromStr for MyDateTime {
-    type Err = chrono::ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").map(MyDateTime)
     }
 }
