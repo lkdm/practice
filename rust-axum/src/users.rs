@@ -47,9 +47,11 @@ impl Users {
                     id,
                     created_date,
                     modified_date,
-                    deleted_date,
+                    deleted_date
                 FROM
                     users
+                WHERE
+                    deleted_date IS NULL OR deleted_date > CURRENT_TIMESTAMP
             "#,
         )
         .fetch_all(&self.db)
@@ -63,8 +65,11 @@ impl Users {
                     id,
                     created_date,
                     modified_date,
-                    deleted_date,
-                FROM users WHERE id = ?
+                    deleted_date
+                FROM users
+                WHERE
+                    id = ?
+                    AND (deleted_date IS NULL OR deleted_date > CURRENT_TIMESTAMP)
             "#,
         )
         .bind(id)
