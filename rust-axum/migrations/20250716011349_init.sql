@@ -1,20 +1,22 @@
--- Allow triggers
-PRAGMA recursive_triggers = ON;
-
--- Add migration script here
+-- Users are internal representations of a person
 CREATE TABLE IF NOT EXISTS users (
-  id BLOB NOT NULL PRIMARY KEY,
+  id TEXT NOT NULL PRIMARY KEY,
   created_date TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
   modified_date TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-  deleted_date TEXT
+  deleted_date TEXT,
+  last_login_date TEXT,
+  tz TEXT NOT NULL DEFAULT 'UTC',
+  email TEXT NOT NULL UNIQUE,
+  backup_email TEXT UNIQUE
 );
 
--- Update modified_date
-CREATE TRIGGER IF NOT EXISTS update_modified_date
-AFTER UPDATE ON users
-FOR EACH ROW
-BEGIN
-  UPDATE users
-  SET modified_date = CURRENT_TIMESTAMP
-  WHERE id = OLD.id;
-END;
+-- Profile is a public representation of a person
+CREATE TABLE IF NOT EXISTS profiles (
+  id TEXT NOT NULL PRIMARY KEY,
+  created_date TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  modified_date TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  deleted_date TEXT,
+  user_id BLOB NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  display_name TEXT
+);

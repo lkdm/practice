@@ -2,6 +2,7 @@ use axum::Json;
 use axum::http::header::WWW_AUTHENTICATE;
 use axum::http::{HeaderMap, HeaderValue, Response, StatusCode};
 use axum::response::IntoResponse;
+use http::Method;
 use sqlx::error::DatabaseError;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -70,6 +71,12 @@ pub enum Error {
     /// ```
     #[error("an internal server error occurred")]
     Internal(Box<dyn InternalError>),
+
+    /// Method not allowed
+    ///
+    /// Sometimes we need to guaard against unimplemented HTTP methods
+    #[error("method not allowed: {0}")]
+    MethodNotAllowed(Method),
 }
 
 impl<E: InternalError> From<E> for Error {
@@ -108,6 +115,7 @@ impl Error {
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::UnprocessableEntity { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Database(_) | Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::MethodNotAllowed(_) => StatusCode::METHOD_NOT_ALLOWED,
         }
     }
 }

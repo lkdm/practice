@@ -1,5 +1,5 @@
 use core::fmt;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use sqlx::types::Uuid;
 use std::option::Option;
 

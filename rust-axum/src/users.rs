@@ -1,13 +1,13 @@
 //! Users resource
 use super::{AppState, Db};
-use crate::types::Identifier;
+use crate::{error::Error, types::Identifier};
 use axum::{
     extract::{FromRef, Path, State},
     response::{IntoResponse, Json},
 };
 use axum_extra::routing::Resource;
-use chrono::NaiveDateTime;
-use http::StatusCode;
+use chrono::{NaiveDateTime, Utc};
+use http::{Method, StatusCode};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, sqlx::FromRow, Serialize)]
@@ -16,11 +16,23 @@ pub struct User {
     created_date: NaiveDateTime,
     modified_date: NaiveDateTime,
     deleted_date: Option<NaiveDateTime>,
+    last_login_date: Option<NaiveDateTime>,
+    tz: String,
+    email: String,
+    backup_email: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateUser {
+    email: String,
 }
 
 #[derive(Deserialize)]
 pub struct UpdateUser {
     pub deleted_date: Option<NaiveDateTime>,
+    pub tz: String,
+    email: String,
+    backup_email: Option<String>,
 }
 
 #[derive(Clone)]
@@ -47,7 +59,10 @@ impl Users {
                     id,
                     created_date,
                     modified_date,
-                    deleted_date
+                    deleted_date,
+                    tz,
+                    email,
+                    backup_email
                 FROM
                     users
                 WHERE
@@ -65,7 +80,10 @@ impl Users {
                     id,
                     created_date,
                     modified_date,
-                    deleted_date
+                    deleted_date,
+                    tz,
+                    email,
+                    backup_email
                 FROM users
                 WHERE
                     id = ?
@@ -77,33 +95,49 @@ impl Users {
         .await
     }
 
-    pub async fn create(&self) -> sqlx::Result<User> {
+    pub async fn create(&self, payload: CreateUser) -> sqlx::Result<User> {
+        let now = Utc::now().naive_utc();
         sqlx::query_as::<_, User>(
             r#"
-                INSERT INTO users (id) VALUES (?)
-                RETURNING id, created_date, modified_date, deleted_date
+                INSERT INTO users (id, created_date, modified_date, email) VALUES (?, ?, ?, ?)
+                RETURNING id, created_date, modified_date, deleted_date, tz, email
             "#,
         )
         .bind(Identifier::new())
+        .bind(now)
+        .bind(now)
+        .bind(payload.email)
         .fetch_one(&self.db)
         .await
     }
 
     pub async fn update(&self, id: Identifier, payload: UpdateUser) -> sqlx::Result<User> {
+        // Get current record
+        let now = Utc::now().naive_utc();
         sqlx::query_as::<_, User>(
             r#"
                 UPDATE users
-                SET deleted_date = ?
+                SET
+                    deleted_date = ?,
+                    modified_date = ?,
+                    tz = ?,
+                    email = ?,
+                    backup_email = ?
                 WHERE id = ?
-                RETURNING id, created_date, modified_date, deleted_date
+                RETURNING id, created_date, modified_date, deleted_date, tz, email, backup_email
             "#,
         )
         .bind(payload.deleted_date)
+        .bind(now)
+        .bind(payload.tz)
+        .bind(payload.email)
+        .bind(payload.backup_email)
         .bind(id)
         .fetch_one(&self.db)
         .await
     }
 
+    /// Hard-deletes the user and cascades to all connected records
     pub async fn delete(&self, id: Identifier) -> sqlx::Result<()> {
         sqlx::query!(r#"DELETE FROM users WHERE id = ?"#, id)
             .execute(&self.db)
@@ -122,16 +156,24 @@ async fn show(queries: State<Users>, id: Path<Identifier>) -> crate::Result<Json
     Ok(Json(user))
 }
 
-async fn create(queries: State<Users>) -> crate::Result<Json<User>> {
-    let user = queries.create().await?;
+async fn create(
+    State(queries): State<Users>,
+    Json(payload): Json<CreateUser>,
+) -> crate::Result<Json<User>> {
+    let user = queries.create(payload).await?;
     Ok(Json(user))
 }
 
 async fn edit(
+    method: Method,
     State(queries): State<Users>,
     Path(id): Path<Identifier>,
     Json(payload): Json<UpdateUser>,
 ) -> crate::Result<Json<User>> {
+    if method == axum::http::Method::PATCH {
+        // Patch not implemented
+        return Err(Error::MethodNotAllowed(method));
+    }
     let user = queries.update(id, payload).await?;
     Ok(Json(user))
 }
@@ -146,10 +188,10 @@ async fn delete(
 
 pub fn router() -> Resource<AppState> {
     Resource::named("users")
-        .index(index) // GET /users
-        .create(create) // POST /users
-        .show(show) // GET /users/:id
-        .update(edit) // PATCH /users/:id
-        .destroy(delete) // DELETE /users/:id
+        .index(index)
+        .create(create)
+        .show(show)
+        .update(edit)
+        .destroy(delete)
         .into()
 }
