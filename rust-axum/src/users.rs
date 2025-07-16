@@ -37,35 +37,33 @@ impl Users {
     }
 
     pub async fn all(&self) -> sqlx::Result<Vec<User>> {
-        query_as!(
-            User,
+        sqlx::query_as::<_, User>(
             r#"
                 SELECT
-                    id as "id: Identifier",
-                    created_date as "created_date: NaiveDateTime",
-                    modified_date as "modified_date: NaiveDateTime",
-                    deleted_date as "deleted_date: NaiveDateTime"
+                    id,
+                    created_date,
+                    modified_date,
+                    deleted_date,
                 FROM
                     users
-            "#
+            "#,
         )
         .fetch_all(&self.db)
         .await
     }
 
     pub async fn find_by_id(&self, id: Identifier) -> sqlx::Result<User> {
-        query_as!(
-            User,
+        sqlx::query_as::<_, User>(
             r#"
                 SELECT 
-                    id as "id: Identifier",
-                    created_date as "created_date: NaiveDateTime",
-                    modified_date as "modified_date: NaiveDateTime",
-                    deleted_date as "deleted_date: NaiveDateTime"
+                    id,
+                    created_date,
+                    modified_date,
+                    deleted_date,
                 FROM users WHERE id = ?
             "#,
-            id
         )
+        .bind(id)
         .fetch_one(&self.db)
         .await
     }
