@@ -10,6 +10,7 @@ use tower_http::{normalize_path::NormalizePathLayer, timeout::TimeoutLayer};
 use crate::config::Config;
 
 pub mod config;
+pub mod credentials;
 pub mod error;
 pub mod health;
 pub mod types;
