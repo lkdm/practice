@@ -1,0 +1,28 @@
+[package]
+name = "rust-axum"
+description = "Practice writing a HTTP web service in Rust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = { version = "0.8.4", features = ["macros"]}
+clap = { version = "4.5.41", features = ["derive", "env"]}
+http = "1.3.1"
+serde = { version = "1.0.219", features = ["derive"]}
+sqlx = { version = "0.8.6", features = ["_sqlite"] }
+thiserror = "2.0.12"
+tokio = "1.46.1"
+tower = { version = "0.5.2", features = ["timeout", "limit"]}
+tower-http = { version = "0.6.6", features = ["trace", "cors", "timeout", "normalize-path", "compression-gzip", "limit", "sensitive-headers"] }
+tracing = "0.1.41"
+
+[dev-dependencies]
+axum-test = "17.3.0"
+
+[profile.release]
+# Link-time optimiser may result in a bigger binary but more performance
+lto = true
+# Specifies the number of parallel processes used to compile this crate. During development,
+# you wan this number to be high. But because it can result in slower code, it's better to
+# limit it for production builds.
+codegen-units = 1
