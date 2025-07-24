@@ -8,6 +8,20 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 pub trait InternalError: std::error::Error + Send + Sync + 'static {}
 
+#[derive(Debug, thiserror::Error)]
+#[error("Developer error: {0}")]
+pub struct DeveloperError(pub String);
+
+impl DeveloperError {
+    pub fn new(message: impl Into<String>) -> Self {
+        let msg = message.into();
+        tracing::error!(error = %msg, "Developer error occurred");
+        DeveloperError(msg)
+    }
+}
+
+impl InternalError for DeveloperError {}
+
 /// Api Error type
 ///
 /// Shamelessly stolen from [launchbadge](https://github.com/launchbadge/realworld-axum-sqlx/blob/main/src/http/error.rs)

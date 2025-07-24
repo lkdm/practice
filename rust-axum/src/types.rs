@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
-use std::{convert::TryFrom, fmt};
+use std::{convert::TryFrom, fmt, str::FromStr};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Type, Clone)]
@@ -32,5 +32,15 @@ impl TryFrom<String> for Identifier {
     fn try_from(s: String) -> Result<Self, Self::Error> {
         Uuid::parse_str(&s)?; // Validation
         Ok(Identifier(s))
+    }
+}
+
+impl FromStr for Identifier {
+    type Err = uuid::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Validate by parsing UUID from the string slice
+        Uuid::parse_str(s)?;
+        Ok(Identifier(s.to_owned()))
     }
 }

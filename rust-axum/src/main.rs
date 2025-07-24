@@ -76,7 +76,6 @@ async fn main() -> Result<()> {
                 .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PUT])
                 .allow_headers(tower_http::cors::Any),
         )
-        // TODO: Add auth layer
         // Trim trailing slash
         .layer(NormalizePathLayer::trim_trailing_slash())
         // Set a timeout for requests

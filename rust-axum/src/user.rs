@@ -1,6 +1,9 @@
 //! Users resource
 use super::{AppState, Db};
+use crate::auth::{Claims, Permissions};
+use crate::unauthorized;
 use crate::{error::Error, types::Identifier};
+use axum::Extension;
 use axum::{
     extract::{FromRef, Path, State},
     response::{IntoResponse, Json},
@@ -148,26 +151,52 @@ impl UserContext {
     }
 }
 
-async fn index(queries: State<UserContext>) -> crate::Result<Json<Vec<User>>> {
+async fn index(
+    Extension(claims): Extension<Claims>,
+    queries: State<UserContext>,
+) -> crate::Result<Json<Vec<User>>> {
+    let p = Permissions::new(Some(&claims))?;
+    match (p.is_developer()) {
+        true => {}
+        _ => unauthorized!(),
+    }
+
     let users = queries.all().await?;
     Ok(Json(users))
 }
 
-async fn show(queries: State<UserContext>, id: Path<Identifier>) -> crate::Result<Json<User>> {
+async fn show(
+    Extension(claims): Extension<Claims>,
+    queries: State<UserContext>,
+    id: Path<Identifier>,
+) -> crate::Result<Json<User>> {
+    let p = Permissions::new(Some(&claims))?;
+    match (p.is_same_user(&id), p.is_developer()) {
+        (true, _) | (_, true) => {}
+        _ => unauthorized!(),
+    }
+
     let user = queries.find_by_id(id.clone()).await?;
     Ok(Json(user))
 }
 
 async fn create(
+    Extension(claims): Extension<Claims>,
     State(queries): State<UserContext>,
     Json(payload): Json<CreateUser>,
 ) -> crate::Result<Json<User>> {
+    let p = Permissions::new(Some(&claims))?;
+    match p.is_authenticated() {
+        true => {}
+        _ => unauthorized!(),
+    }
     let user = queries.create(payload).await?;
     Ok(Json(user))
 }
 
 async fn edit(
     method: Method,
+    Extension(claims): Extension<Claims>,
     State(queries): State<UserContext>,
     Path(id): Path<Identifier>,
     Json(payload): Json<UpdateUser>,
@@ -176,14 +205,26 @@ async fn edit(
         // Patch not implemented
         return Err(Error::MethodNotAllowed(method));
     }
+    let p = Permissions::new(Some(&claims))?;
+    match (p.is_same_user(&id), p.is_developer()) {
+        (true, _) | (_, true) => {}
+        _ => unauthorized!(),
+    }
+
     let user = queries.update(id, payload).await?;
     Ok(Json(user))
 }
 
 async fn delete(
+    Extension(claims): Extension<Claims>,
     State(queries): State<UserContext>,
     Path(id): Path<Identifier>,
 ) -> crate::Result<impl IntoResponse> {
+    let p = Permissions::new(Some(&claims))?;
+    match (p.is_same_user(&id), p.is_developer()) {
+        (true, _) | (_, true) => {}
+        _ => unauthorized!(),
+    }
     queries.delete(id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

@@ -1,5 +1,5 @@
 use axum::{
-    Json,
+    Extension, Json,
     extract::{FromRef, Path, State},
     response::IntoResponse,
 };
@@ -8,7 +8,13 @@ use chrono::{NaiveDateTime, Utc};
 use http::{Method, StatusCode};
 use serde::{Deserialize, Serialize};
 
-use crate::{AppState, Db, error::Error, types::Identifier};
+use crate::{
+    AppState, Db,
+    auth::{Claims, Permissions},
+    error::Error,
+    types::Identifier,
+    unauthorized,
+};
 
 #[derive(Debug, sqlx::FromRow, Serialize)]
 pub struct Profile {
@@ -70,7 +76,7 @@ impl ProfileContext {
         .await
     }
 
-    pub async fn find_by_id(&self, id: Identifier) -> sqlx::Result<Profile> {
+    pub async fn find_by_id(&self, id: &Identifier) -> sqlx::Result<Profile> {
         sqlx::query_as::<_, Profile>(
             r#"
                 SELECT
@@ -140,29 +146,53 @@ impl ProfileContext {
     }
 }
 
-async fn index(queries: State<ProfileContext>) -> crate::Result<Json<Vec<Profile>>> {
+async fn index(
+    Extension(claims): Extension<Claims>,
+    queries: State<ProfileContext>,
+) -> crate::Result<Json<Vec<Profile>>> {
+    let p = Permissions::new(Some(&claims))?;
+
+    match p.is_authenticated() {
+        true => {}
+        _ => unauthorized!(),
+    }
+
     let profiles = queries.all().await?;
     Ok(Json(profiles))
 }
 
 async fn show(
+    Extension(claims): Extension<Claims>,
     queries: State<ProfileContext>,
     id: Path<Identifier>,
 ) -> crate::Result<Json<Profile>> {
-    let profile = queries.find_by_id(id.clone()).await?;
+    let p = Permissions::new(Some(&claims))?;
+    match p.is_authenticated() {
+        true => {}
+        _ => unauthorized!(),
+    }
+
+    let profile = queries.find_by_id(&id).await?;
     Ok(Json(profile))
 }
 
 async fn create(
+    Extension(claims): Extension<Claims>,
     State(queries): State<ProfileContext>,
     Json(payload): Json<CreateProfile>,
 ) -> crate::Result<Json<Profile>> {
+    let p = Permissions::new(Some(&claims))?;
+    match p.is_authenticated() {
+        true => {}
+        _ => unauthorized!(),
+    }
     let profile = queries.create(payload).await?;
     Ok(Json(profile))
 }
 
 async fn edit(
     method: Method,
+    Extension(claims): Extension<Claims>,
     State(queries): State<ProfileContext>,
     Path(id): Path<Identifier>,
     Json(payload): Json<UpdateProfile>,
@@ -170,14 +200,32 @@ async fn edit(
     if method == axum::http::Method::PATCH {
         return Err(Error::MethodNotAllowed(method));
     }
+
+    let profile = queries.find_by_id(&id).await?;
+
+    let p = Permissions::new(Some(&claims))?;
+    match (p.is_same_user(&profile.user_id), p.is_developer()) {
+        (true, _) | (_, true) => {}
+        _ => unauthorized!(),
+    }
+
     let profile = queries.update(id, payload).await?;
     Ok(Json(profile))
 }
 
 async fn delete(
+    Extension(claims): Extension<Claims>,
     State(queries): State<ProfileContext>,
     Path(id): Path<Identifier>,
 ) -> crate::Result<impl IntoResponse> {
+    let profile = queries.find_by_id(&id).await?;
+
+    let p = Permissions::new(Some(&claims))?;
+    match (p.is_same_user(&profile.user_id), p.is_developer()) {
+        (true, _) | (_, true) => {}
+        _ => unauthorized!(),
+    }
+
     queries.delete(id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
