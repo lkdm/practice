@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  # Database instance.
+  postgres:
+    image: postgres:13-buster
+    environment:
+      - POSTGRES_USER=lkdm
+      - POSTGRES_PASSWORD=yPVPuBjJ6yvGPyLegXGcsoxbFRNz
+    ports:
+      - 5432:5432
+    volumes:
+      - ./data/pg:/var/lib/postgresql/data
