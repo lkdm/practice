@@ -1,5 +1,5 @@
 use core::fmt;
-use std::str::FromStr;
+use std::{env, str::FromStr};
 
 use clap::{Parser, ValueEnum};
 use serde::Deserialize;
@@ -24,4 +24,7 @@ pub type Port = u16;
 pub struct Config {
     #[arg(long, env, default_value = "http://127.0.0.1:9080")]
     pub api_url: Url,
+
+    #[arg(long, env, default_value = "sqlite:db/dev.sqlite3")]
+    pub database_url: String,
 }

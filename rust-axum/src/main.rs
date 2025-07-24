@@ -4,7 +4,7 @@ use tracing::{Level, debug};
 
 use axum::{Router, middleware, response::IntoResponse};
 use http::{Method, StatusCode};
-use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::net::TcpListener;
 use tower_http::{
     compression::CompressionLayer,
@@ -42,23 +42,24 @@ async fn main() -> Result<()> {
         .compact() // Optional: compact output
         .init();
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env");
-
     let db = SqlitePoolOptions::new()
         .max_connections(1)
-        .connect(&database_url)
+        .connect(&config.database_url)
         .await
         .expect("could not start database");
 
     let state = AppState { db };
 
+    // Routes that are protected by authentication
     let protected_routes = Router::new()
         .merge(user::router())
         .merge(profile::router())
         .route_layer(middleware::from_fn(auth::auth));
 
+    // Routes that are not protected by authentication
     let unprotected_routes = Router::new().merge(health::router());
 
+    // API version 1
     let api_v1 = Router::new()
         .merge(unprotected_routes)
         .merge(protected_routes);
