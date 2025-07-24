@@ -1,8 +1,8 @@
 use clap::Parser;
 use std::{env, net::SocketAddr, time::Duration};
-use tracing::Level;
+use tracing::{Level, debug};
 
-use axum::{Router, response::IntoResponse};
+use axum::{Router, middleware, response::IntoResponse};
 use http::{Method, StatusCode};
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::net::TcpListener;
@@ -38,6 +38,7 @@ async fn main() -> Result<()> {
 
     tracing_subscriber::fmt()
         .with_target(false) // Optional: suppress target field
+        .with_max_level(Level::DEBUG)
         .compact() // Optional: compact output
         .init();
 
@@ -51,10 +52,16 @@ async fn main() -> Result<()> {
 
     let state = AppState { db };
 
-    let api_v1 = Router::new()
-        .merge(health::router())
+    let protected_routes = Router::new()
         .merge(user::router())
-        .merge(profile::router());
+        .merge(profile::router())
+        .route_layer(middleware::from_fn(auth::auth));
+
+    let unprotected_routes = Router::new().merge(health::router());
+
+    let api_v1 = Router::new()
+        .merge(unprotected_routes)
+        .merge(protected_routes);
 
     let app: Router = Router::new()
         .nest("/v1", api_v1)
