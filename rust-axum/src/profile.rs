@@ -12,6 +12,7 @@ use crate::{
     AppState, Db,
     auth::{Claims, Permissions},
     error::Error,
+    forbidden,
     types::Identifier,
     unauthorized,
 };
@@ -221,9 +222,15 @@ async fn delete(
     let profile = queries.find_by_id(&id).await?;
 
     let p = Permissions::new(Some(&claims))?;
-    match (p.is_same_user(&profile.user_id), p.is_developer()) {
-        (true, _) | (_, true) => {}
-        _ => unauthorized!(),
+    match (
+        p.is_authenticated(),
+        p.is_same_user(&profile.user_id),
+        p.is_developer(),
+        p.is_elevated(),
+    ) {
+        (false, _, _, _) => unauthorized!(),
+        (_, true, _, true) | (_, _, true, true) => {}
+        _ => forbidden!(),
     }
 
     queries.delete(id).await?;

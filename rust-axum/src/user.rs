@@ -221,8 +221,8 @@ async fn delete(
     Path(id): Path<Identifier>,
 ) -> crate::Result<impl IntoResponse> {
     let p = Permissions::new(Some(&claims))?;
-    match (p.is_same_user(&id), p.is_developer()) {
-        (true, _) | (_, true) => {}
+    match (p.is_same_user(&id), p.is_developer(), p.is_elevated()) {
+        (true, _, true) | (_, true, true) => {}
         _ => unauthorized!(),
     }
     queries.delete(id).await?;
