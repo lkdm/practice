@@ -6,6 +6,7 @@ use axum::{Router, middleware, response::IntoResponse};
 use http::{Method, StatusCode};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::net::TcpListener;
+use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer,
     normalize_path::NormalizePathLayer,
@@ -50,11 +51,15 @@ async fn main() -> Result<()> {
 
     let state = AppState { db };
 
+    let auth_stack = ServiceBuilder::new()
+        .layer(middleware::from_fn(auth::check_authentication))
+        .layer(middleware::from_fn(auth::check_authorisation));
+
     // Routes that are protected by authentication
     let protected_routes = Router::new()
         .merge(user::router())
         .merge(profile::router())
-        .route_layer(middleware::from_fn(auth::auth));
+        .layer(auth_stack);
 
     // Routes that are not protected by authentication
     let unprotected_routes = Router::new().merge(health::router());

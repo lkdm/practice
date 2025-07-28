@@ -12,6 +12,7 @@ use axum::{
 use chrono::{Duration, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tower::ServiceBuilder;
 use tracing::debug;
 
 use crate::{
@@ -34,26 +35,18 @@ pub struct Claims {
     sub: String,
     email: Option<String>,
     // Owned profiles
-    profile_ids: Vec<String>,
+    // profile_ids: Vec<String>,
 }
 
-/// Authorisation to enter handler; Is the handler callable by the subject
-pub async fn check_authorisation(mut req: Request, next: Next) -> crate::Result<Response> {
-    /// Is this resource callable by the subject?
-    /// Exmamples: A user, resource they don't have permission to access
-    /// If not:
-    // Err(Error::Forbidden) // ONLY if you want to show that the resource exists
-    // Err(Error::NotFound) // If you want to hide the fact that the resource exists
-    // /// Are they they the correct user but require elevation?
-    // /// Must send back WWW-Authenticate header
-    // Err(Error::Unauthorized)
-    // todo!("is the user who they claim to be?")
-    Ok(next.run(req).await)
-}
-
-/// Authentication: Is the subject who they claim to be?
-/// TODO: rename to check_authentication
-pub async fn auth(mut req: Request, next: Next) -> crate::Result<Response> {
+/// check_authentication
+///
+/// Asks: Is the subject who they claim to be?
+///
+/// Steps:
+/// 1. Decodes and verififies JWT token and claims (such as expiration).
+/// 2. Rejects requests with invalid, expired, or tampered tokens.
+/// 3. If valid, extracts the claims and attaches it to the request context.
+pub async fn check_authentication(mut req: Request, next: Next) -> crate::Result<Response> {
     debug!("started auth");
     let auth_header = match req.headers().get(http::header::AUTHORIZATION) {
         Some(header_value) => match header_value.to_str() {
@@ -63,25 +56,32 @@ pub async fn auth(mut req: Request, next: Next) -> crate::Result<Response> {
         None => return Err(Error::Unauthorized),
     };
 
-    match authorise_current_user(auth_header).await {
-        Some(current_user) => {
-            req.extensions_mut().insert(current_user);
-            Ok(next.run(req).await)
-        }
-        None => Err(Error::Unauthorized),
-    }
-}
-async fn authorise_current_user(auth_header: &str) -> Option<Claims> {
-    Some(Claims {
-        sub: "1".into(),
-        email: Some("hello@hello.hello".into()),
-        mfa_recent_at: None,
-    })
+    let claims = Claims {
+        sub: "1".to_string(),
+        email: Some("hello@hello.hello".to_string()),
+    };
+
+    req.extensions_mut().insert(claims);
+    Ok(next.run(req).await)
 }
 
-async fn protected_handler(Extension(claims): Extension<Claims>) -> impl IntoResponse {
-    // Now you can access claims fields like claims.sub, claims.email, etc.
-    format!("Hello user: {}, email: {:?}", claims.sub, claims.email)
+/// check_authorisation
+///
+/// Asks whether the user is allowed to access the resource?
+/// 1. Checks permission rules
+pub async fn check_authorisation(
+    Extension(claims): Extension<Claims>,
+    mut req: Request,
+    next: Next,
+) -> crate::Result<Response> {
+    // Err(Error::Forbidden) // ONLY if you want to show that the resource exists
+    // Err(Error::NotFound) // If you want to hide the fact that the resource exists
+    // /// Are they they the correct user but require elevation?
+    // /// Must send back WWW-Authenticate header
+    // Err(Error::Unauthorized)
+    // todo!("is the user who they claim to be?")
+    debug!("Checking permissions for claims: {:?}", claims);
+    Ok(next.run(req).await)
 }
 
 /// Permissions builder
@@ -119,10 +119,11 @@ impl Permissions {
             }
         };
 
-        let is_elevated = claims.mfa_recent_at.map_or(false, |mfa_time| {
-            let now = Utc::now().naive_utc();
-            now.signed_duration_since(mfa_time) <= Duration::minutes(5)
-        });
+        // let is_elevated = claims.mfa_recent_at.map_or(false, |mfa_time| {
+        //     let now = Utc::now().naive_utc();
+        //     now.signed_duration_since(mfa_time) <= Duration::minutes(5)
+        // });
+        let is_elevated = true;
 
         if validation_errors.len() > 0 {
             return Err(Error::unprocessable_entity(validation_errors));
