@@ -31,11 +31,13 @@ pub enum Role {
 /// Claims
 ///
 /// Claims should reflect mainly identity, and ownership, but not permissions or state.
+///
+/// TODO: https://lib.rs/install/jsonwebtoken
 pub struct Claims {
     sub: String,
     email: Option<String>,
-    // Owned profiles
-    // profile_ids: Vec<String>,
+    exp: usize, // Owned profiles
+                // profile_ids: Vec<String>,
 }
 
 /// check_authentication

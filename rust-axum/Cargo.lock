@@ -1840,6 +1840,7 @@ dependencies = [
  "chrono",
  "clap",
  "http",
+ "jsonwebtoken",
  "serde",
  "sqlx",
  "thiserror",
