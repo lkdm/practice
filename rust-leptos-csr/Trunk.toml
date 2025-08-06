@@ -1,0 +1,8 @@
+[watch]
+watch = ["src/"]
+ignore = ["public/"]
+
+[[hooks]]
+stage = "pre_build"
+command = "npx"
+command_arguments = ["tailwindcss-cli", "-i", "src/input.css", "-o", "public/style.css"]
