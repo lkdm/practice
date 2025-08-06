@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 eframe = { git = "https://github.com/emilk/egui", branch = "main" }
+rfd = "0.15.4"
