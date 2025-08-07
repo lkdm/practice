@@ -1,5 +1,8 @@
 use dirs::download_dir;
-use eframe::egui::{self, CentralPanel, Ui};
+use eframe::egui::{
+    self, CentralPanel, Color32, ComboBox, Frame, KeyboardShortcut, Margin, Rounding,
+    SelectableLabel, Ui,
+};
 use rfd::FileDialog;
 use std::path::PathBuf;
 
@@ -11,13 +14,14 @@ fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions::default();
 
     eframe::run_native(
-        "PDF Tool",
+        "PDF Tools",
         options,
         Box::new(|_cc| Ok(Box::<MyApp>::default())),
     )
 }
 
 struct MyApp {
+    action: Action,
     picked_file: Option<PathBuf>,
     pdf: Option<PDF>,
 }
@@ -25,6 +29,7 @@ struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
         Self {
+            action: Action::Split,
             picked_file: None,
             pdf: None,
         }
@@ -33,9 +38,16 @@ impl Default for MyApp {
 
 impl MyApp {
     // This method handles the file picker UI and modifies self.picked_file
-    fn show_file_picker(&mut self, ui: &mut Ui) {
-        if ui.button("Open file picker").clicked() {
-            let downloads_dir = dirs::download_dir().unwrap();
+    fn show_file_picker(&mut self, ui: &mut egui::Ui) {
+        let open_shortcut = egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::O);
+
+        let shortcut_triggered = ui
+            .ctx()
+            .input_mut(|input| input.consume_shortcut(&open_shortcut));
+
+        if ui.button("Open file picker").clicked() || shortcut_triggered {
+            let downloads_dir =
+                dirs::download_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
             if let Some(path) = FileDialog::new().set_directory(downloads_dir).pick_file() {
                 self.picked_file = Some(path);
             }
@@ -44,7 +56,6 @@ impl MyApp {
         if let Some(ref file) = self.picked_file {
             ui.label(format!("Picked file: {}", file.display()));
             let document = PDF::new(file);
-            // ui.label(format!("Page length: {}", document.length()));
             self.pdf = Some(document);
         }
     }
@@ -69,18 +80,37 @@ impl MyApp {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Action {
+    Split,
+    Merge,
+}
+
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_pixels_per_point(1.5);
-        CentralPanel::default().show(ctx, |ui| {
-            ui.heading("PDF tool");
-            ui.label("This is directly on the main frame without a window.");
 
-            // Call the helper method here
+        egui::TopBottomPanel::top("top_bar")
+            .min_height(24.0)
+            .frame(
+                Frame::new()
+                    .fill(Color32::from_rgb(50, 50, 50))
+                    .inner_margin(8),
+            )
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut self.action, Action::Split, "Split");
+                    ui.selectable_value(&mut self.action, Action::Merge, "Merge");
+                });
+                // ui.add_space(10.0);
+            });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.add_space(10.0);
             self.show_file_picker(ui);
             self.show_split_button(ui);
         });
 
-        ctx.request_repaint(); // keep UI responsive
+        ctx.request_repaint();
     }
 }
