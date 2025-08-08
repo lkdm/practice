@@ -1,22 +1,31 @@
 use dirs::download_dir;
 use eframe::egui::{
-    self, CentralPanel, Color32, ComboBox, Frame, KeyboardShortcut, Margin, Rounding,
+    self, CentralPanel, Color32, ComboBox, Frame, KeyboardShortcut, Margin, RichText, Rounding,
     SelectableLabel, Ui,
 };
+use egui_material_icons::icons;
 use rfd::FileDialog;
 use std::path::PathBuf;
 
 use crate::pdf::PDF;
 
+// TODO:
+// - Merge
+// - Compress
+
 pub mod pdf;
 
 fn main() -> Result<(), eframe::Error> {
-    let options = eframe::NativeOptions::default();
+    let mut options = eframe::NativeOptions::default();
 
     eframe::run_native(
         "PDF Tools",
         options,
-        Box::new(|_cc| Ok(Box::<MyApp>::default())),
+        Box::new(|_cc| {
+            _cc.egui_ctx.set_pixels_per_point(1.5);
+            egui_material_icons::initialize(&_cc.egui_ctx);
+            Ok(Box::<MyApp>::default())
+        }),
     )
 }
 
@@ -78,29 +87,95 @@ impl MyApp {
         }
         Ok(())
     }
+
+    fn show_nav(&mut self, ui: &mut Ui) {
+        ui.vertical_centered(|ui| {
+            ui.add_space(10.0);
+            ui.label(
+                RichText::new(format!("{} {}", icons::ICON_PICTURE_AS_PDF, "PDF Toolbox"))
+                    .heading()
+                    .color(Color32::from_rgb(180, 180, 180)),
+            );
+            ui.add_space(20.0);
+        });
+
+        for (action_val, label, icon, hint) in &[
+            (
+                Action::Split,
+                "Split",
+                icons::ICON_CALL_SPLIT,
+                "Split a single PDF into multiple",
+            ),
+            (
+                Action::Merge,
+                "Merge",
+                icons::ICON_CALL_MERGE,
+                "Merge a group of PDFs into one",
+            ),
+            (
+                Action::Compress,
+                "Compress",
+                icons::ICON_COMPRESS,
+                "Compress PDFs",
+            ),
+        ] {
+            let selected = self.action == *action_val;
+
+            let button = egui::Button::new(
+                RichText::new(format!("{}  {}", icon, label))
+                    .size(14.0)
+                    .color(if selected {
+                        Color32::WHITE
+                    } else {
+                        Color32::from_rgb(180, 180, 180)
+                    }),
+            )
+            .fill(if selected {
+                Color32::from_rgb(70, 130, 180)
+            } else {
+                Color32::from_rgb(40, 40, 40)
+            })
+            .min_size(egui::vec2(ui.available_width(), 36.0));
+
+            if ui.add(button).on_hover_text(*hint).clicked() {
+                self.action = *action_val;
+            }
+
+            ui.add_space(8.0);
+        }
+
+        ui.with_layout(egui::Layout::bottom_up(eframe::egui::Align::Center), |ui| {
+            ui.add_space(6.0);
+            ui.label(
+                RichText::new("v0.1.0")
+                    .small()
+                    .color(Color32::from_gray(100)),
+            );
+        });
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Action {
     Split,
     Merge,
+    Compress,
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        ctx.set_pixels_per_point(1.5);
-
-        egui::TopBottomPanel::top("top_bar")
-            .min_height(24.0)
+        egui::SidePanel::left("top_bar")
+            .resizable(true)
+            .default_width(180.0)
+            .width_range(160.0..=240.0)
             .frame(
                 Frame::new()
-                    .fill(Color32::from_rgb(50, 50, 50))
+                    .fill(Color32::from_rgb(20, 20, 20))
                     .inner_margin(8),
             )
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.action, Action::Split, "Split");
-                    ui.selectable_value(&mut self.action, Action::Merge, "Merge");
+                egui::ScrollArea::both().show(ui, |ui| {
+                    self.show_nav(ui);
                 });
                 // ui.add_space(10.0);
             });
@@ -109,6 +184,11 @@ impl eframe::App for MyApp {
             ui.add_space(10.0);
             self.show_file_picker(ui);
             self.show_split_button(ui);
+            match self.action {
+                Action::Split => ui.label("Split"),
+                Action::Merge => ui.label("Merge"),
+                Action::Compress => ui.label("Compress"),
+            }
         });
 
         ctx.request_repaint();
