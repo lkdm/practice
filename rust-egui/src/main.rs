@@ -1,22 +1,15 @@
-use dirs::download_dir;
-use eframe::egui::{
-    self, CentralPanel, Color32, ComboBox, Frame, KeyboardShortcut, Margin, RichText, Rounding,
-    SelectableLabel, Ui,
-};
+use dirs::desktop_dir;
+use eframe::egui::{self, Color32, Frame, KeyboardShortcut, RichText, Ui};
 use egui_material_icons::icons;
-use rfd::FileDialog;
-use std::path::PathBuf;
+use std::{ops::Range, path::PathBuf};
 
 use crate::pdf::PDF;
 
-// TODO:
-// - Merge
-// - Compress
-
+mod components;
 pub mod pdf;
 
 fn main() -> Result<(), eframe::Error> {
-    let mut options = eframe::NativeOptions::default();
+    let options = eframe::NativeOptions::default();
 
     eframe::run_native(
         "PDF Tools",
@@ -29,64 +22,91 @@ fn main() -> Result<(), eframe::Error> {
     )
 }
 
+struct SplitViewState {
+    picked_pdf: Option<PDF>,
+
+    ranges: Vec<Range<usize>>,
+}
+
+impl Default for SplitViewState {
+    fn default() -> Self {
+        Self {
+            picked_pdf: None,
+            ranges: Vec::new(),
+        }
+    }
+}
+
+struct Config {
+    /// The default directory to open
+    default_directory: Option<PathBuf>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            default_directory: dirs::download_dir().or(desktop_dir()),
+        }
+    }
+}
+
 struct MyApp {
     action: Action,
-    picked_file: Option<PathBuf>,
-    pdf: Option<PDF>,
+    split_view_state: SplitViewState,
+    config: Config,
 }
 
 impl Default for MyApp {
     fn default() -> Self {
         Self {
             action: Action::Split,
-            picked_file: None,
-            pdf: None,
+            split_view_state: SplitViewState::default(),
+            config: Config::default(),
         }
     }
 }
 
 impl MyApp {
-    // This method handles the file picker UI and modifies self.picked_file
-    fn show_file_picker(&mut self, ui: &mut egui::Ui) {
-        let open_shortcut = egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::O);
+    fn show_split_view(&mut self, ui: &mut egui::Ui) {
+        // File picker to load PDF
+        components::file_picker(ui, &mut self.split_view_state.picked_pdf);
 
-        let shortcut_triggered = ui
-            .ctx()
-            .input_mut(|input| input.consume_shortcut(&open_shortcut));
-
-        if ui.button("Open file picker").clicked() || shortcut_triggered {
-            let downloads_dir =
-                dirs::download_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-            if let Some(path) = FileDialog::new().set_directory(downloads_dir).pick_file() {
-                self.picked_file = Some(path);
-            }
-        }
-
-        if let Some(ref file) = self.picked_file {
-            ui.label(format!("Picked file: {}", file.display()));
-            let document = PDF::new(file);
-            self.pdf = Some(document);
-        }
+        ui.separator();
     }
 
-    fn show_split_button(&mut self, ui: &mut Ui) -> Result<(), Box<dyn std::error::Error>> {
-        if ui.button("Split").clicked() {
-            let downloads_dir = dirs::download_dir().expect("could not find downloads directory");
-
-            if let Some(ref old_pdf) = self.pdf {
-                // Split PDF into individual page PDFs
-                let single_pages = old_pdf.split_into_single_pages()?;
-                // Optionally save each single page PDF
-                for (index, single_pdf) in single_pages.into_iter().enumerate() {
-                    let mut output_path = downloads_dir.clone();
-                    output_path.push(format!("page_{}.pdf", index + 1));
-                    let mut pdf = single_pdf;
-                    pdf.flush(&output_path)?;
-                }
-            }
-        }
-        Ok(())
+    fn show_extract_view(&mut self, ui: &mut egui::Ui) {
+        components::file_picker(ui, &mut self.split_view_state.picked_pdf);
     }
+
+    fn show_merge_view(&mut self, ui: &mut egui::Ui) {
+        // file_picker_with_label(ui);
+        ui.label("Merge functionality coming soon...");
+        // merge UI code here
+    }
+
+    fn show_compress_view(&mut self, ui: &mut egui::Ui) {
+        ui.label("Compress functionality coming soon...");
+        // compress UI code here
+    }
+
+    // fn show_split_button(&mut self, ui: &mut Ui) -> Result<(), Box<dyn std::error::Error>> {
+    //     if ui.button("Split").clicked() {
+    //         let downloads_dir = dirs::download_dir().expect("could not find downloads directory");
+    //
+    //         if let Some(ref old_pdf) = self.pdf {
+    //             // Split PDF into individual page PDFs
+    //             let single_pages = old_pdf.split_into_single_pages()?;
+    //             // Optionally save each single page PDF
+    //             for (index, single_pdf) in single_pages.into_iter().enumerate() {
+    //                 let mut output_path = downloads_dir.clone();
+    //                 output_path.push(format!("page_{}.pdf", index + 1));
+    //                 let mut pdf = single_pdf;
+    //                 pdf.flush(&output_path)?;
+    //             }
+    //         }
+    //     }
+    //     Ok(())
+    // }
 
     fn show_nav(&mut self, ui: &mut Ui) {
         ui.vertical_centered(|ui| {
@@ -99,30 +119,11 @@ impl MyApp {
             ui.add_space(20.0);
         });
 
-        for (action_val, label, icon, hint) in &[
-            (
-                Action::Split,
-                "Split",
-                icons::ICON_CALL_SPLIT,
-                "Split a single PDF into multiple",
-            ),
-            (
-                Action::Merge,
-                "Merge",
-                icons::ICON_CALL_MERGE,
-                "Merge a group of PDFs into one",
-            ),
-            (
-                Action::Compress,
-                "Compress",
-                icons::ICON_COMPRESS,
-                "Compress PDFs",
-            ),
-        ] {
-            let selected = self.action == *action_val;
+        for action in Action::all() {
+            let selected = self.action == action.clone();
 
             let button = egui::Button::new(
-                RichText::new(format!("{}  {}", icon, label))
+                RichText::new(format!(" {}  {}", action.icon(), action.label()))
                     .size(14.0)
                     .color(if selected {
                         Color32::WHITE
@@ -137,8 +138,8 @@ impl MyApp {
             })
             .min_size(egui::vec2(ui.available_width(), 36.0));
 
-            if ui.add(button).on_hover_text(*hint).clicked() {
-                self.action = *action_val;
+            if ui.add(button).on_hover_text(action.hint()).clicked() {
+                self.action = action.clone();
             }
 
             ui.add_space(8.0);
@@ -155,16 +156,77 @@ impl MyApp {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Split,
+    Extract,
     Merge,
     Compress,
 }
 
+type ActionViewFn = fn(&mut MyApp, &mut egui::Ui);
+
+impl Action {
+    /// Return all supported actions
+    pub fn all() -> &'static [Action] {
+        &[
+            Action::Split,
+            Action::Extract,
+            Action::Merge,
+            Action::Compress,
+        ]
+    }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            Action::Split => "Split",
+            Action::Extract => "Extract pages",
+            Action::Merge => "Merge",
+            Action::Compress => "Compress",
+        }
+    }
+
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Action::Split => icons::ICON_CALL_SPLIT,
+            Action::Extract => icons::ICON_COLORIZE,
+            Action::Merge => icons::ICON_CALL_MERGE,
+            Action::Compress => icons::ICON_COMPRESS,
+        }
+    }
+
+    pub fn hint(&self) -> &'static str {
+        match self {
+            Action::Split => "Split a single PDF into multiple",
+            Action::Extract => "Extract a page or range of pages from a PDF",
+            Action::Merge => "Merge a group of PDFs into one",
+            Action::Compress => "Compress PDFs",
+        }
+    }
+
+    pub fn view(&self) -> ActionViewFn {
+        match self {
+            Action::Split => MyApp::show_split_view,
+            Action::Extract => MyApp::show_extract_view,
+            Action::Merge => MyApp::show_merge_view,
+            Action::Compress => MyApp::show_compress_view,
+        }
+    }
+}
+
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        egui::SidePanel::left("top_bar")
+        // egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
+        //     egui::MenuBar::new().ui(ui, |ui| {
+        //         ui.menu_button("Application", |ui| {
+        //             if ui.button("Quit").clicked() {
+        //                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+        //             }
+        //         });
+        //     });
+        // });
+
+        egui::SidePanel::left("left_bar")
             .resizable(true)
             .default_width(180.0)
             .width_range(160.0..=240.0)
@@ -182,13 +244,7 @@ impl eframe::App for MyApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.add_space(10.0);
-            self.show_file_picker(ui);
-            self.show_split_button(ui);
-            match self.action {
-                Action::Split => ui.label("Split"),
-                Action::Merge => ui.label("Merge"),
-                Action::Compress => ui.label("Compress"),
-            }
+            (self.action.view())(self, ui);
         });
 
         ctx.request_repaint();
