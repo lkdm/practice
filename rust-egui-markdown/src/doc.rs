@@ -12,6 +12,12 @@ use ropey::Rope;
 
 const MAX_TITLE_LEN: usize = 50;
 
+pub trait DocumentRepository {
+    fn load(&self, id: DocumentId) -> Result<Document, String>;
+    fn save(&self, document: &Document) -> Result<(), String>;
+    fn list(&self) -> Result<Vec<Document>, String>;
+}
+
 /// Shareable reference to a [`Document`] with interior mutability
 pub type SharedDocument = Rc<RefCell<Document>>;
 

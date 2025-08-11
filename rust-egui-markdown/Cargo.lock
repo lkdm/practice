@@ -1874,7 +1874,7 @@ dependencies = [
  "rustc-hash 1.1.0",
  "spirv",
  "strum",
- "thiserror 2.0.12",
+ "thiserror 2.0.13",
  "unicode-ident",
 ]
 
@@ -2582,7 +2582,7 @@ checksum = "a4e608c6638b9c18977b00b475ac1f28d14e84b27d8d42f70e0bf1e3dec127ac"
 dependencies = [
  "getrandom 0.2.16",
  "libredox",
- "thiserror 2.0.12",
+ "thiserror 2.0.13",
 ]
 
 [[package]]
@@ -2663,6 +2663,8 @@ dependencies = [
  "egui_demo_lib",
  "rfd",
  "ropey",
+ "thiserror 2.0.13",
+ "uuid",
 ]
 
 [[package]]
@@ -2999,11 +3001,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.12"
+version = "2.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
+checksum = "c0b43c71ffa7199f8a00fe309ac01551e3c35105b50ceacd7f67ce080ec18fdf"
 dependencies = [
- "thiserror-impl 2.0.12",
+ "thiserror-impl 2.0.13",
 ]
 
 [[package]]
@@ -3019,9 +3021,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.12"
+version = "2.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
+checksum = "c65da2500f2800e48970ef01d47aeb80e328e38adf723def51b5ad1d0a8ca03e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3218,6 +3220,16 @@ name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+
+[[package]]
+name = "uuid"
+version = "1.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f33196643e165781c20a5ead5582283a7dacbb87855d867fbc2df3f81eddc1be"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "version_check"
@@ -3523,7 +3535,7 @@ dependencies = [
  "raw-window-handle",
  "rustc-hash 1.1.0",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.13",
  "wgpu-core-deps-apple",
  "wgpu-core-deps-emscripten",
  "wgpu-core-deps-windows-linux-android",
@@ -3597,7 +3609,7 @@ dependencies = [
  "raw-window-handle",
  "renderdoc-sys",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.13",
  "wasm-bindgen",
  "web-sys",
  "wgpu-types",
@@ -3615,7 +3627,7 @@ dependencies = [
  "bytemuck",
  "js-sys",
  "log",
- "thiserror 2.0.12",
+ "thiserror 2.0.13",
  "web-sys",
 ]
 

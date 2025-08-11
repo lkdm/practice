@@ -1,7 +1,4 @@
-use dirs::download_dir;
 use eframe::egui::{self, CentralPanel, ComboBox, Ui};
-use rfd::FileDialog;
-use std::path::PathBuf;
 
 use crate::doc::DocumentManager;
 
