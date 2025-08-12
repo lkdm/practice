@@ -9,13 +9,17 @@ use std::{
 };
 
 use ropey::Rope;
+use thiserror::Error;
+use uuid::Uuid;
+
+use crate::fs::PersistenceError;
 
 const MAX_TITLE_LEN: usize = 50;
 
 pub trait DocumentRepository {
-    fn load(&self, id: DocumentId) -> Result<Document, String>;
-    fn save(&self, document: &Document) -> Result<(), String>;
-    fn list(&self) -> Result<Vec<Document>, String>;
+    fn load(&self, id: DocumentId) -> Result<Document, PersistenceError>;
+    fn save(&self, document: &Document) -> Result<(), PersistenceError>;
+    fn list(&self) -> Result<Vec<Document>, PersistenceError>;
 }
 
 /// Shareable reference to a [`Document`] with interior mutability
@@ -23,19 +27,25 @@ pub type SharedDocument = Rc<RefCell<Document>>;
 
 /// DocumentId - References a document
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct DocumentId(pub u32);
+pub struct DocumentId(pub Uuid);
 
 impl Deref for DocumentId {
-    type Target = u32;
+    type Target = Uuid;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
+impl Into<Uuid> for DocumentId {
+    fn into(self) -> Uuid {
+        self.0
+    }
+}
+
 impl Default for DocumentId {
     fn default() -> Self {
-        Self(0)
+        Self(Uuid::new_v4())
     }
 }
 
@@ -136,6 +146,14 @@ impl Document {
         }
     }
 
+    pub fn id(&self) -> &DocumentId {
+        &self.id
+    }
+
+    pub fn text(&self) -> &Rope {
+        &self.text
+    }
+
     pub fn open(id: DocumentId, path: PathBuf) -> Result<Self, std::io::Error> {
         let file = std::fs::File::open(&path)?;
         let reader = BufReader::new(file);
@@ -203,22 +221,19 @@ impl Default for Document {
 
 pub struct DocumentManager {
     documents: BTreeMap<DocumentId, SharedDocument>,
-    next_id: u32,
 }
 
 impl DocumentManager {
     pub fn new() -> Self {
         Self {
             documents: BTreeMap::new(),
-            next_id: 0,
         }
     }
 
     pub fn add_document(&mut self) -> SharedDocument {
-        let id = DocumentId(self.next_id);
-        let document = Rc::new(RefCell::new(Document::new(id)));
-        self.documents.insert(id, document.clone());
-        self.next_id += 1;
+        let document = Rc::new(RefCell::new(Document::default()));
+        self.documents
+            .insert(DocumentId::default(), document.clone());
         document
     }
 
