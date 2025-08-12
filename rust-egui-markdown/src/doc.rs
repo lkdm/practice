@@ -9,24 +9,52 @@ use std::{
 };
 
 use ropey::Rope;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::fs::PersistenceError;
+#[derive(Clone, Serialize)]
+pub struct CreateDocumentRequest {
+    text: String,
+}
+
+#[derive(Debug, Error)]
+#[error("could not create document: {0}")]
+pub struct CreateDocumentError(#[source] Box<dyn std::error::Error>);
+
+#[derive(Clone, Serialize)]
+pub struct UpdateDocumentRequest {
+    id: DocumentId,
+    text: String,
+}
+
+#[derive(Debug, Error)]
+#[error("could not update document: {0}")]
+pub struct UpdateDocumentError(#[source] Box<dyn std::error::Error>);
+
+#[derive(Clone, Serialize)]
+pub struct GetDocumentRequest {
+    id: DocumentId,
+}
+
+#[derive(Debug, Error)]
+#[error("could not get document: {0}")]
+pub struct GetDocumentError(#[source] Box<dyn std::error::Error>);
+
+#[derive(Clone, Serialize)]
+pub struct ListDocumentsRequest {}
+
+#[derive(Debug, Error)]
+#[error("could not list documents: {0}")]
+pub struct ListDocumentsError(#[source] Box<dyn std::error::Error>);
 
 const MAX_TITLE_LEN: usize = 50;
-
-pub trait DocumentRepository {
-    fn load(&self, id: DocumentId) -> Result<Document, PersistenceError>;
-    fn save(&self, document: &Document) -> Result<(), PersistenceError>;
-    fn list(&self) -> Result<Vec<Document>, PersistenceError>;
-}
 
 /// Shareable reference to a [`Document`] with interior mutability
 pub type SharedDocument = Rc<RefCell<Document>>;
 
 /// DocumentId - References a document
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct DocumentId(pub Uuid);
 
 impl Deref for DocumentId {
