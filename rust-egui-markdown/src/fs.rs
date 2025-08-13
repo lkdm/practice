@@ -1,4 +1,9 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use async_trait::async_trait;
+use std::{
+    collections::BTreeMap,
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -8,26 +13,27 @@ use crate::doc::{
     UpdateDocumentRequest,
 };
 
-type Promise<T, E> = Box<dyn Future<Output = Result<T, E>> + Send>;
+// type Promise<T, E> = Box<dyn Future<Output = Result<T, E>> + Send>;
 
 /// DocumentRepository
 ///
 /// The repository pattern was chosen because it keeps PathBufs (an implementation detail for the
 /// file system) out of the core logic of the application.
+#[async_trait]
 pub trait DocumentRepository: Clone + Send + Sync + 'static {
-    fn create_document(
+    async fn create_document(
         &self,
         req: &CreateDocumentRequest,
-    ) -> Promise<Document, CreateDocumentError>;
-    fn update_document(
+    ) -> Result<Document, CreateDocumentError>;
+    async fn update_document(
         &self,
         req: &UpdateDocumentRequest,
-    ) -> Promise<Document, UpdateDocumentError>;
+    ) -> Result<Document, UpdateDocumentError>;
 
     /// Given an ID, returns a useable Document struct
     ///
     /// On desktop, this loads the file into memory
-    fn get_document(&self, req: &GetDocumentRequest) -> Promise<Document, GetDocumentError>;
+    async fn get_document(&self, req: &GetDocumentRequest) -> Result<Document, GetDocumentError>;
 
     /// List Documents
     ///
@@ -35,10 +41,10 @@ pub trait DocumentRepository: Clone + Send + Sync + 'static {
     /// paths are added to the registry, and their Uuid handles are returned in a vector. Usually
     /// the user will only select one. On desktop, `get_document` is called immediately on each of
     /// these items.
-    fn list_documents(
+    async fn list_documents(
         &self,
         req: &ListDocumentsRequest,
-    ) -> Promise<Vec<DocumentId>, ListDocumentsError>;
+    ) -> Result<Vec<DocumentId>, ListDocumentsError>;
 }
 
 #[derive(Clone)]
@@ -47,7 +53,7 @@ pub trait DocumentRepository: Clone + Send + Sync + 'static {
 /// Abstraction over the file sytsem
 struct FileSystem {
     /// The FileSystem stores a list of Uuids mapped to system paths
-    paths: BTreeMap<Uuid, PathBuf>,
+    paths: Arc<RwLock<BTreeMap<Uuid, PathBuf>>>,
     /// The default directory to open in an rfd window
     default_dir: Option<PathBuf>,
     /// Name of rfd filter
@@ -56,29 +62,30 @@ struct FileSystem {
     extensions: Vec<String>,
 }
 
+#[async_trait]
 impl DocumentRepository for FileSystem {
-    fn create_document(
+    async fn create_document(
         &self,
         req: &CreateDocumentRequest,
-    ) -> Promise<Document, CreateDocumentError> {
+    ) -> Result<Document, CreateDocumentError> {
         todo!()
     }
 
-    fn update_document(
+    async fn update_document(
         &self,
         req: &UpdateDocumentRequest,
-    ) -> Promise<Document, UpdateDocumentError> {
+    ) -> Result<Document, UpdateDocumentError> {
         todo!()
     }
 
-    fn get_document(&self, req: &GetDocumentRequest) -> Promise<Document, GetDocumentError> {
+    async fn get_document(&self, req: &GetDocumentRequest) -> Result<Document, GetDocumentError> {
         todo!()
     }
 
-    fn list_documents(
+    async fn list_documents(
         &self,
         req: &ListDocumentsRequest,
-    ) -> Promise<Vec<DocumentId>, ListDocumentsError> {
+    ) -> Result<Vec<DocumentId>, ListDocumentsError> {
         todo!()
     }
 }
