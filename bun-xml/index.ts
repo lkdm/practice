@@ -17,6 +17,8 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
  * See: [Documentation](https://github.com/NaturalIntelligence/fast-xml-parser/blob/HEAD/docs/v4/2.XMLparseOptions.md)
  */
 interface ParseOpts {
+	/** Whether to ignore the XML declaration **/
+	ignoreDeclaration: boolean;
 	/** Ignore attributes **/
 	ignoreAttributes: boolean;
 	/** Specify prefix of attributes **/
@@ -53,16 +55,17 @@ export const parseXml = (
 	input: string,
 	opts: Partial<ParseOpts>,
 ): Result<string, string> => {
-	const cleanedInput = input.replace(/<\?xml.*?\?>/, "").trim();
+	// const cleanedInput = input.replace(/<\?xml.*?\?>/, "").trim();
 	// Set sane defaults
 	const defaultOpts: ParseOpts = {
 		ignoreAttributes: true,
 		attributeNamePrefix: "@_",
 		allowBooleanAttributes: false,
+		ignoreDeclaration: true,
 	};
 	const parser = new XMLParser({ ...defaultOpts, ...opts });
 	try {
-		const parsedValue = parser.parse(cleanedInput);
+		const parsedValue = parser.parse(input);
 		return ok(parsedValue);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "unknown reason";
@@ -70,4 +73,20 @@ export const parseXml = (
 	}
 };
 
-console.log(parseXml(xml, {}));
+// TODO: deal with `adjustmentList` empty string value
+// In fact, all empty strings should just be null values?
+//
+
+// Medicare specific; certain numbers need to be strings
+
+const main = async () => {
+	const file = Bun.file("/var/home/luke/Downloads/test.xml");
+	const text = await file.text();
+	const out = parseXml(text, {});
+	match(out)
+		.with({ ok: true }, (out) => console.log(JSON.stringify(out.value)))
+		.with({ ok: false }, ({ error }) => console.error(error))
+		.exhaustive();
+};
+
+await main();
