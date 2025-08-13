@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "fast-xml-parser": "^5.2.5",
+    "ts-pattern": "^5.8.0"
+  }
+}
