@@ -2,6 +2,8 @@ use ropey::Rope;
 use thiserror::Error;
 use uuid::Uuid;
 
+use crate::error::Result;
+
 type Timestamp = chrono::NaiveDateTime;
 
 struct DraftId(Uuid);
@@ -31,26 +33,8 @@ struct ShareMetadata {
     // method: ShareMethod,
 }
 
-pub trait PluginError: std::error::Error + Send + Sync + 'static {}
-
-#[derive(Debug, Error)]
-pub enum ShareError {
-    /// Internal server error
-    ///
-    /// Any Error that implements `InternalError` will automatically use this.
-    ///
-    /// An alternative to this is [`anyhow`], but this allows you to statically define your error
-    /// variants.
-    ///
-    /// ## Usage
-    /// ```rs
-    /// impl InternalError for MyError {}
-    /// ```
-    #[error("an internal server error occurred")]
-    Plugin(Box<dyn InternalError>),
-}
-
 trait ShareMethod {
+    fn label(&self) -> &str;
     fn name(&self) -> &str;
-    fn share(&self, draft: &Draft) -> Result<(), ShareError>;
+    fn share(&self, draft: &Draft) -> Result<()>;
 }
