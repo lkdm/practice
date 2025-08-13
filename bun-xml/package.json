@@ -5,6 +5,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.2.20",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "vitest": "^3.2.4"
   }
 }

@@ -1,5 +1,5 @@
 import { match, P, Pattern } from "ts-pattern";
-import { XMLParser } from "fast-xml-parser";
+import { validationOptions, X2jOptions, XMLParser } from "fast-xml-parser";
 import { _ } from "lodash";
 
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -11,24 +11,25 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
 </note>`;
 
 /**
- * ParseOpts
- *
  * Configuration for [`fast-xml-parser`]
  *
  * See: [Documentation](https://github.com/NaturalIntelligence/fast-xml-parser/blob/HEAD/docs/v4/2.XMLparseOptions.md)
  */
-interface ParseOpts {
-	/** Whether to ignore the XML declaration **/
-	ignoreDeclaration: boolean;
-	/** Ignore attributes **/
-	ignoreAttributes: boolean;
-	/** Specify prefix of attributes **/
-	attributeNamePrefix: string;
-	/** Allow boolean attributes **/
-	allowBooleanAttributes: boolean;
-	/** Name to save XML comments into **/
-	commentPropName: string | undefined;
+export interface FastXmlParseOpts extends X2jOptions { }
+
+/**
+ * Custom options for our XML parser
+ */
+interface CustomParseOpts {
+	/** Filter out empty strings **/
+	filterEmptyStringValues?: boolean;
+	/** Turn dicts with numbered keys into arrays **/
+	filterTurnNumberedKeyDictsToArrays?: boolean;
 }
+/**
+ * Options for XML parser
+ */
+export interface ParseOpts extends Partial<FastXmlParseOpts>, CustomParseOpts { }
 
 /**
  * Result monad
@@ -56,17 +57,15 @@ const isErr = <T, E>(result: Result<T, E>): result is Err<E> => !result.ok;
  */
 export const parseXml = (
 	input: string,
-	opts: Partial<ParseOpts>,
+	opts: ParseOpts,
 ): Result<Record<string, unknown>, string> => {
 	// Provide sane defaults
-	const defaultOpts: ParseOpts = {
+	const defaultOpts: Partial<FastXmlParseOpts> = {
 		ignoreAttributes: true,
 		attributeNamePrefix: "@_",
 		allowBooleanAttributes: false,
 		ignoreDeclaration: true,
 		commentPropName: "#comment",
-	};
-	const parser = new XMLParser({
 		// # Security
 		//
 		// Following attacks are possible due to entity processing:
@@ -81,16 +80,35 @@ export const parseXml = (
 		//
 		// Source: [Documentation](https://github.com/NaturalIntelligence/fast-xml-parser/blob/ad17aa4b12e2c052b6f3ae8de16c33192caf83ce/docs/v4/5.Entities.md#attacks)
 		processEntities: false,
+	};
+	const parser = new XMLParser({
 		...defaultOpts,
 		...opts,
 	});
+
 	try {
-		const parsedValue = parser.parse(input);
+		let parsedValue = parser.parse(input);
+		// TODO: Make immutable data struct
+		parsedValue = opts.filterEmptyStringValues
+			? filterEmptyStrings(parsedValue)
+			: parsedValue;
+		// TODO: Make numbered key dicts into arrays
+		parsedValue = opts.filterTurnNumberedKeyDictsToArrays
+			? morphNumberedDictsToArrays(parsedValue)
+			: parsedValue;
 		return ok(parsedValue);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "unknown reason";
 		return err(`could not parse XML because: ${message}`);
 	}
+};
+
+const morphNumberedDictsToArrays = (
+	obj: Record<string, unknown>,
+): Record<string, unknown> => {
+	// Step 1 - Detect an object being used in lieu of an array
+	// Step 2 - Morph it into an array
+	return obj;
 };
 
 const filterEmptyStrings = (
