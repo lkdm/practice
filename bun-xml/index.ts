@@ -1,5 +1,6 @@
-import { match } from "ts-pattern";
+import { match, P, Pattern } from "ts-pattern";
 import { XMLParser } from "fast-xml-parser";
+import { _ } from "lodash";
 
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <note>
@@ -25,6 +26,8 @@ interface ParseOpts {
 	attributeNamePrefix: string;
 	/** Allow boolean attributes **/
 	allowBooleanAttributes: boolean;
+	/** Name to save XML comments into **/
+	commentPropName: string | undefined;
 }
 
 /**
@@ -49,21 +52,38 @@ const isErr = <T, E>(result: Result<T, E>): result is Err<E> => !result.ok;
 /**
  * Parses XML into a JSON object
  *
- * Does not perform any validation
+ * - Does not perform any validation
  */
 export const parseXml = (
 	input: string,
 	opts: Partial<ParseOpts>,
-): Result<string, string> => {
-	// const cleanedInput = input.replace(/<\?xml.*?\?>/, "").trim();
-	// Set sane defaults
+): Result<Record<string, unknown>, string> => {
+	// Provide sane defaults
 	const defaultOpts: ParseOpts = {
 		ignoreAttributes: true,
 		attributeNamePrefix: "@_",
 		allowBooleanAttributes: false,
 		ignoreDeclaration: true,
+		commentPropName: "#comment",
 	};
-	const parser = new XMLParser({ ...defaultOpts, ...opts });
+	const parser = new XMLParser({
+		// # Security
+		//
+		// Following attacks are possible due to entity processing:
+		// - Denial-of-Service Attacks
+		// - Classic XXE
+		// - Advanced XXE
+		// - Server-Side Request Forgery (SSRF)
+		// - XInclude
+		// - XSLT
+		//
+		// Since FXP doesn't allow entities with & in the values, above attacks should not work.
+		//
+		// Source: [Documentation](https://github.com/NaturalIntelligence/fast-xml-parser/blob/ad17aa4b12e2c052b6f3ae8de16c33192caf83ce/docs/v4/5.Entities.md#attacks)
+		processEntities: false,
+		...defaultOpts,
+		...opts,
+	});
 	try {
 		const parsedValue = parser.parse(input);
 		return ok(parsedValue);
@@ -73,18 +93,33 @@ export const parseXml = (
 	}
 };
 
-// TODO: deal with `adjustmentList` empty string value
-// In fact, all empty strings should just be null values?
-//
-
-// Medicare specific; certain numbers need to be strings
+const filterEmptyStrings = (
+	obj: Record<string, unknown>,
+): Record<string, unknown> => {
+	return Object.entries(obj).reduce(
+		(acc, [key, value]) => {
+			if (value === "") {
+				return acc; // Skip empty strings
+			}
+			if (typeof value === "object" && value !== null) {
+				acc[key] = filterEmptyStrings(value as Record<string, unknown>); // Recursively filter
+			} else {
+				acc[key] = value; // Keep non-empty values
+			}
+			return acc;
+		},
+		{} as Record<string, unknown>,
+	);
+};
 
 const main = async () => {
 	const file = Bun.file("/var/home/luke/Downloads/test.xml");
 	const text = await file.text();
 	const out = parseXml(text, {});
 	match(out)
-		.with({ ok: true }, (out) => console.log(JSON.stringify(out.value)))
+		.with({ ok: true }, (out) =>
+			console.log(JSON.stringify(filterEmptyStrings(out.value))),
+		)
 		.with({ ok: false }, ({ error }) => console.error(error))
 		.exhaustive();
 };
