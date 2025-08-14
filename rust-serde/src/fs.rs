@@ -7,8 +7,9 @@ use bincode::serde::Compat;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::service::{ServiceError, ServicePersistence, Services};
-
+/// BinaryFileError
+///
+/// Can be returned while writing to or reading from a binary file
 #[derive(Debug, Error)]
 pub enum BinaryFileError {
     #[error("file error: {0}")]
@@ -21,8 +22,12 @@ pub enum BinaryFileError {
     Decode(#[from] bincode::error::DecodeError),
 }
 
+/// Helper type to slightly shorten method signatures
 pub type Result<T> = std::result::Result<T, BinaryFileError>;
 
+/// BinaryFile
+///
+/// A binary file used to persist state on the filesystem
 #[derive(Clone, Debug)]
 pub struct BinaryFile {
     path: PathBuf,
@@ -39,11 +44,16 @@ impl BinaryFile {
         Self { path }
     }
 
+    /// Returns our bincode config
+    /// I don't really care to optimise this further
     fn bincode_config(&self) -> Configuration {
         bincode::config::standard()
     }
 
-    fn write<T>(&self, req: T) -> Result<()>
+    /// write
+    ///
+    /// Accepts any T that implements Serialize, and will encode it to binary and flush to disk
+    pub fn write<T>(&self, req: T) -> Result<()>
     where
         T: Serialize,
     {
@@ -65,7 +75,10 @@ impl BinaryFile {
         Ok(())
     }
 
-    fn read<T>(&self) -> Result<T>
+    /// read
+    ///
+    /// Decodes any T from binary on disk
+    pub fn read<T>(&self) -> Result<T>
     where
         T: for<'de> Deserialize<'de>,
     {
@@ -80,12 +93,4 @@ impl BinaryFile {
     }
 }
 
-impl ServicePersistence for BinaryFile {
-    fn write_services(&self, req: &Services) -> std::result::Result<(), ServiceError> {
-        Ok(self.write(req)?)
-    }
-
-    fn read_services(&self) -> std::result::Result<Services, ServiceError> {
-        Ok(self.read()?)
-    }
-}
+/// TODO: Test this
