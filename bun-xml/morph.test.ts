@@ -15,23 +15,49 @@ describe("XML->JSON Parser", () => {
         test: "A",
       },
     };
-    test("Should flatten", () => {
-      // If the input dictionary's keys are numeric strings, contiguous, and start from 0 or 1; then it should be collapsed into an array.
-      expectTypeOf(fn(data)).toBeArray;
+    test("Should flatten when numeric contiguous keys start from 1", () => {
+      const result = fn(data);
+
+      // Compile-time check
+      expectTypeOf(result).toBeArray;
+
+      // Runtime checks
+      expect(Array.isArray(result)).toBe(true);
     });
+
     test("Noop because non-contiguous number key", () => {
-      // If the input dictionary's keys are non-contiguous, then it should retain its original shape
-      expectTypeOf(fn({ data, "5": true })).toMatchTypeOf<
-        Record<string, unknown>
-      >();
-      expectTypeOf(fn({ data, "5": true })).not.toBeArray();
+      const input = { ...data, "5": true };
+      const result = fn(input);
+
+      expectTypeOf(result).toMatchTypeOf<Record<string, unknown>>();
+      expectTypeOf(result).not.toBeArray();
+
+      expect(Array.isArray(result)).toBe(false);
+      expect(result).toEqual(input);
     });
+
     test("Noop because non-numeric key", () => {
-      // If any of the input dictionary's keys are non-numeric, it should retain its original shape
-      expectTypeOf(fn({ data, a: true })).toMatchTypeOf<
-        Record<string, unknown>
-      >();
-      expectTypeOf(fn({ data, a: true })).not.toBeArray();
+      const input = { ...data, a: true };
+      const result = fn(input);
+
+      expectTypeOf(result).toMatchTypeOf<Record<string, unknown>>();
+      expectTypeOf(result).not.toBeArray();
+
+      expect(Array.isArray(result)).toBe(false);
+      expect(result).toEqual(input);
+    });
+
+    test("Should flatten recursively", () => {
+      const input = { grandparent: { parent: data } };
+      const result = fn(input);
+
+      expectTypeOf(result).toBeArray;
+      expect(Array.isArray(result)).toBe(true);
+
+      // Verify nested flattening actually happened
+      expect(result.parent).toEqual([
+        [{ test: "A" }, { test: "B" }, { test: "C" }],
+      ]);
     });
   });
 });
