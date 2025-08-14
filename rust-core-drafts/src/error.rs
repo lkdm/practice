@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::share::PluginRegistrationError;
+
 pub type Result<T> = std::result::Result<T, Error>;
 pub trait ShareError: std::error::Error + Send + Sync + 'static {}
 
@@ -10,6 +12,9 @@ pub enum Error {
 
     #[error("filesystem error: {0}")]
     IO(#[from] std::io::Error),
+
+    #[error("plugin registration error: {0}")]
+    Registration(#[from] PluginRegistrationError),
 
     /// ShareError
     ///

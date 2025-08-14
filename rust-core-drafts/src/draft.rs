@@ -6,11 +6,11 @@ use crate::error::Result;
 
 type Timestamp = chrono::NaiveDateTime;
 
-struct DraftId(Uuid);
+pub struct DraftId(Uuid);
 
 struct Text(Rope);
 
-enum DraftState {
+pub enum DraftState {
     /// Scratchpad drafts are the default, they are archived after being shared
     Scratchpad,
     /// Archived drafts are deleted after `n` days
@@ -26,15 +26,4 @@ pub struct Draft {
     text: Text,
     created_at: Timestamp,
     state: DraftState,
-}
-
-struct ShareMetadata {
-    shared_at: Option<Timestamp>,
-    // method: ShareMethod,
-}
-
-trait ShareMethod {
-    fn label(&self) -> &str;
-    fn name(&self) -> &str;
-    fn share(&self, draft: &Draft) -> Result<()>;
 }
