@@ -15,21 +15,21 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
  *
  * See: [Documentation](https://github.com/NaturalIntelligence/fast-xml-parser/blob/HEAD/docs/v4/2.XMLparseOptions.md)
  */
-export interface FastXmlParseOpts extends X2jOptions { }
+export interface FastXmlParseOpts extends X2jOptions {}
 
 /**
  * Custom options for our XML parser
  */
 interface CustomParseOpts {
-	/** Filter out empty strings **/
-	filterEmptyStringValues?: boolean;
-	/** Turn dicts with numbered keys into arrays **/
-	filterTurnNumberedKeyDictsToArrays?: boolean;
+  /** Filter out empty strings **/
+  filterEmptyStringValues?: boolean;
+  /** Turn dicts with numbered keys into arrays **/
+  filterTurnNumberedKeyDictsToArrays?: boolean;
 }
 /**
  * Options for XML parser
  */
-export interface ParseOpts extends Partial<FastXmlParseOpts>, CustomParseOpts { }
+export interface ParseOpts extends Partial<FastXmlParseOpts>, CustomParseOpts {}
 
 /**
  * Result monad
@@ -56,90 +56,117 @@ const isErr = <T, E>(result: Result<T, E>): result is Err<E> => !result.ok;
  * - Does not perform any validation
  */
 export const parseXml = (
-	input: string,
-	opts: ParseOpts,
+  input: string,
+  opts: ParseOpts,
 ): Result<Record<string, unknown>, string> => {
-	// Provide sane defaults
-	const defaultOpts: Partial<FastXmlParseOpts> = {
-		ignoreAttributes: true,
-		attributeNamePrefix: "@_",
-		allowBooleanAttributes: false,
-		ignoreDeclaration: true,
-		commentPropName: "#comment",
-		// # Security
-		//
-		// Following attacks are possible due to entity processing:
-		// - Denial-of-Service Attacks
-		// - Classic XXE
-		// - Advanced XXE
-		// - Server-Side Request Forgery (SSRF)
-		// - XInclude
-		// - XSLT
-		//
-		// Since FXP doesn't allow entities with & in the values, above attacks should not work.
-		//
-		// Source: [Documentation](https://github.com/NaturalIntelligence/fast-xml-parser/blob/ad17aa4b12e2c052b6f3ae8de16c33192caf83ce/docs/v4/5.Entities.md#attacks)
-		processEntities: false,
-	};
-	const parser = new XMLParser({
-		...defaultOpts,
-		...opts,
-	});
+  // Provide sane defaults
+  const defaultOpts: Partial<FastXmlParseOpts> = {
+    ignoreAttributes: true,
+    attributeNamePrefix: "@_",
+    allowBooleanAttributes: false,
+    ignoreDeclaration: true,
+    commentPropName: "#comment",
+    // isArray: true,
+    // # Security
+    //
+    // Following attacks are possible due to entity processing:
+    // - Denial-of-Service Attacks
+    // - Classic XXE
+    // - Advanced XXE
+    // - Server-Side Request Forgery (SSRF)
+    // - XInclude
+    // - XSLT
+    //
+    // Since FXP doesn't allow entities with & in the values, above attacks should not work.
+    //
+    // Source: [Documentation](https://github.com/NaturalIntelligence/fast-xml-parser/blob/ad17aa4b12e2c052b6f3ae8de16c33192caf83ce/docs/v4/5.Entities.md#attacks)
+    processEntities: false,
+  };
+  const parser = new XMLParser({
+    ...defaultOpts,
+    ...opts,
+  });
 
-	try {
-		let parsedValue = parser.parse(input);
-		// TODO: Make immutable data struct
-		parsedValue = opts.filterEmptyStringValues
-			? filterEmptyStrings(parsedValue)
-			: parsedValue;
-		// TODO: Make numbered key dicts into arrays
-		parsedValue = opts.filterTurnNumberedKeyDictsToArrays
-			? morphNumberedDictsToArrays(parsedValue)
-			: parsedValue;
-		return ok(parsedValue);
-	} catch (error) {
-		const message = error instanceof Error ? error.message : "unknown reason";
-		return err(`could not parse XML because: ${message}`);
-	}
+  try {
+    let parsedValue = parser.parse(input);
+    // TODO: Make immutable data struct
+    parsedValue = opts.filterEmptyStringValues
+      ? filterEmptyStrings(parsedValue)
+      : parsedValue;
+    // TODO: Make numbered key dicts into arrays
+    parsedValue = opts.filterTurnNumberedKeyDictsToArrays
+      ? flattenCollectionDicts(parsedValue)
+      : parsedValue;
+    return ok(parsedValue);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown reason";
+    return err(`could not parse XML because: ${message}`);
+  }
 };
 
-const morphNumberedDictsToArrays = (
-	obj: Record<string, unknown>,
-): Record<string, unknown> => {
-	// Step 1 - Detect an object being used in lieu of an array
-	// Step 2 - Morph it into an array
-	return obj;
+export const flattenCollectionDicts = (
+  input: unknown | [] | Record<string, unknown>,
+): unknown => {
+  if (Array.isArray(input)) {
+    return input.map(flattenCollectionDicts);
+  }
+
+  if (_.isPlainObject(input)) {
+    const obj = input as Record<string, unknown>;
+    const keys = Object.keys(obj);
+    const numericKeys = keys
+      .map(Number)
+      .filter((k) => !isNaN(k))
+      .sort((a, b) => a - b);
+
+    const isContiguousNumericKeys =
+      numericKeys.length === keys.length &&
+      numericKeys[0] === 1 &&
+      numericKeys.every((k, i) => k === i + 1);
+
+    if (isContiguousNumericKeys) {
+      // Convert to array and recurse
+      return numericKeys.map((k) =>
+        flattenCollectionDicts((input as any)[k.toString()]),
+      );
+    }
+
+    // Recurse on object properties
+    return _.mapValues(input, flattenCollectionDicts);
+  }
+
+  return input;
 };
 
 const filterEmptyStrings = (
-	obj: Record<string, unknown>,
+  obj: Record<string, unknown>,
 ): Record<string, unknown> => {
-	return Object.entries(obj).reduce(
-		(acc, [key, value]) => {
-			if (value === "") {
-				return acc; // Skip empty strings
-			}
-			if (typeof value === "object" && value !== null) {
-				acc[key] = filterEmptyStrings(value as Record<string, unknown>); // Recursively filter
-			} else {
-				acc[key] = value; // Keep non-empty values
-			}
-			return acc;
-		},
-		{} as Record<string, unknown>,
-	);
+  return Object.entries(obj).reduce(
+    (acc, [key, value]) => {
+      if (value === "") {
+        return acc; // Skip empty strings
+      }
+      if (typeof value === "object" && value !== null) {
+        acc[key] = filterEmptyStrings(value as Record<string, unknown>); // Recursively filter
+      } else {
+        acc[key] = value; // Keep non-empty values
+      }
+      return acc;
+    },
+    {} as Record<string, unknown>,
+  );
 };
 
 const main = async () => {
-	const file = Bun.file("/var/home/luke/Downloads/test.xml");
-	const text = await file.text();
-	const out = parseXml(text, {});
-	match(out)
-		.with({ ok: true }, (out) =>
-			console.log(JSON.stringify(filterEmptyStrings(out.value))),
-		)
-		.with({ ok: false }, ({ error }) => console.error(error))
-		.exhaustive();
+  const file = Bun.file("/var/home/luke/Downloads/test.xml");
+  const text = await file.text();
+  const out = parseXml(text, {});
+  match(out)
+    .with({ ok: true }, (out) =>
+      console.log(JSON.stringify(filterEmptyStrings(out.value))),
+    )
+    .with({ ok: false }, ({ error }) => console.error(error))
+    .exhaustive();
 };
 
 await main();
