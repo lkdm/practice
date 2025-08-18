@@ -1,29 +1,14 @@
-use clap::{Command, Parser, Subcommand, ValueEnum};
-use clap_complete::{Shell, generate};
+use clap::{Command, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap_complete::{Generator, Shell, generate};
 
-pub struct Cli(Opt);
-
-impl Cli {
-    pub fn new() -> Self {
-        let args = Opt::parse();
-        Self(args)
-    }
-    pub fn args(&self) -> &Opt {
-        &self.0
-    }
-
-    /// Generate Zsh completion script
-    pub fn generate_completions(&self) {
-        if let Some(generator) = self.0.generator {
-            let &mut cmd = self.0.command();
-            generate(
-                generator,
-                cmd,
-                cmd.get_name().to_string(),
-                &mut std::io::stdout(),
-            )
-        }
-    }
+/// Generate Zsh completion script
+pub fn print_completions<G: Generator>(generator: G, cmd: &mut Command) {
+    generate(
+        generator,
+        cmd,
+        cmd.get_name().to_string(),
+        &mut std::io::stdout(),
+    )
 }
 
 #[derive(Parser, Debug)]
@@ -31,15 +16,15 @@ impl Cli {
 pub struct Opt {
     /// Action being taken
     #[command(subcommand)]
-    command: Commands,
+    pub command: Commands,
 
     /// Will output debug logs when enabled
     #[arg(short, long)]
-    debug: bool,
+    pub debug: bool,
 
     /// Used to generate auto completions for shells
     #[arg(long = "generate", value_enum)]
-    generator: Option<Shell>,
+    pub generator: Option<Shell>,
 }
 
 #[derive(Subcommand, Clone, Debug)]

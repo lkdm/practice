@@ -1,5 +1,11 @@
-use test_daemon::{cli::Cli, error::Result, fs::BinaryFile, service::Service};
+use test_daemon::{
+    cli::{Commands, Opt, print_completions},
+    error::Result,
+    fs::BinaryFile,
+    service::Service,
+};
 
+use clap::{Command, CommandFactory, Parser};
 /// The DaemonContext gets passed around to different parts of the application
 #[derive(Debug)]
 struct DaemonContext {
@@ -35,13 +41,32 @@ impl Default for DaemonContext {
 }
 
 pub fn main() -> Result<()> {
-    let args = Cli::new().args();
+    let opt = Opt::parse();
 
-    let mut ctx = DaemonContext::default();
-    ctx.save()?;
-    ctx.load()?;
+    // Generates auto-completions for shell targets
+    if let Some(generator) = opt.generator {
+        let mut cmd = Opt::command();
+        eprintln!("Generating completion file for {generator:?}...");
+        print_completions(generator, &mut cmd);
+    } else {
+        println!("{opt:#?}");
+    }
 
-    println!("{:?}", ctx);
+    // TODO: Setup debug tracing here
 
-    Ok(())
+    match opt.command {
+        Commands::Run { args } => {
+            todo!("Run {:?}", args)
+        }
+        Commands::Install { args } => todo!("Install {:?}", args),
+        Commands::Compile { args } => todo!("Compile {:?}", args),
+    }
+
+    // let mut ctx = DaemonContext::default();
+    // ctx.save()?;
+    // ctx.load()?;
+    //
+    // println!("{:?}", ctx);
+    //
+    // Ok(())
 }
