@@ -1,4 +1,4 @@
-use test_daemon::{error::Result, fs::BinaryFile, service::Service};
+use test_daemon::{cli::Cli, error::Result, fs::BinaryFile, service::Service};
 
 /// The DaemonContext gets passed around to different parts of the application
 #[derive(Debug)]
@@ -35,6 +35,8 @@ impl Default for DaemonContext {
 }
 
 pub fn main() -> Result<()> {
+    let args = Cli::new().args();
+
     let mut ctx = DaemonContext::default();
     ctx.save()?;
     ctx.load()?;
