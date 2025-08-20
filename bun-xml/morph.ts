@@ -4,6 +4,8 @@ import { _ } from "lodash";
  * If the dictionary keys are numbered, contiguous strings, we can turn it into an array
  */
 export const flattenCollectionDictsRecursively = (input: any): any => {
+  if (Array.isArray(input))
+    return input.map((x) => flattenCollectionDictsRecursively(x));
   if (typeof input !== "object" || input === null) return input;
 
   const keys = _.keys(input);

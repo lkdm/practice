@@ -127,9 +127,7 @@ const main = async () => {
   const text = await file.text();
   const out = parseXml(text, {});
   match(out)
-    .with({ ok: true }, (out) =>
-      console.log(JSON.stringify(filterEmptyStrings(out.value))),
-    )
+    .with({ ok: true }, (out) => console.log(JSON.stringify(out.value)))
     .with({ ok: false }, ({ error }) => console.error(error))
     .exhaustive();
 };
