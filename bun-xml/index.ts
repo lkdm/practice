@@ -1,6 +1,7 @@
 import { match, P, Pattern } from "ts-pattern";
 import { validationOptions, X2jOptions, XMLParser } from "fast-xml-parser";
 import { _ } from "lodash";
+import { flattenCollectionDictsRecursively } from "./morph";
 
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <note>
@@ -57,7 +58,7 @@ const isErr = <T, E>(result: Result<T, E>): result is Err<E> => !result.ok;
  */
 export const parseXml = (
   input: string,
-  opts: ParseOpts,
+  { filterTurnNumberedKeyDictsToArrays = true, ...opts }: ParseOpts,
 ): Result<Record<string, unknown>, string> => {
   // Provide sane defaults
   const defaultOpts: Partial<FastXmlParseOpts> = {
@@ -89,53 +90,17 @@ export const parseXml = (
 
   try {
     let parsedValue = parser.parse(input);
-    // TODO: Make immutable data struct
     parsedValue = opts.filterEmptyStringValues
       ? filterEmptyStrings(parsedValue)
       : parsedValue;
-    // TODO: Make numbered key dicts into arrays
-    parsedValue = opts.filterTurnNumberedKeyDictsToArrays
-      ? flattenCollectionDicts(parsedValue)
+    parsedValue = filterTurnNumberedKeyDictsToArrays
+      ? flattenCollectionDictsRecursively(parsedValue)
       : parsedValue;
     return ok(parsedValue);
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown reason";
     return err(`could not parse XML because: ${message}`);
   }
-};
-
-export const flattenCollectionDicts = (
-  input: unknown | [] | Record<string, unknown>,
-): unknown => {
-  if (Array.isArray(input)) {
-    return input.map(flattenCollectionDicts);
-  }
-
-  if (_.isPlainObject(input)) {
-    const obj = input as Record<string, unknown>;
-    const keys = Object.keys(obj);
-    const numericKeys = keys
-      .map(Number)
-      .filter((k) => !isNaN(k))
-      .sort((a, b) => a - b);
-
-    const isContiguousNumericKeys =
-      numericKeys.length === keys.length &&
-      numericKeys[0] === 1 &&
-      numericKeys.every((k, i) => k === i + 1);
-
-    if (isContiguousNumericKeys) {
-      // Convert to array and recurse
-      return numericKeys.map((k) =>
-        flattenCollectionDicts((input as any)[k.toString()]),
-      );
-    }
-
-    // Recurse on object properties
-    return _.mapValues(input, flattenCollectionDicts);
-  }
-
-  return input;
 };
 
 const filterEmptyStrings = (

@@ -1,21 +1,21 @@
 import { describe, expect, expectTypeOf, test } from "bun:test";
-import { flattenCollectionDicts } from "./morph";
+import { flattenCollectionDictsRecursively } from "./morph";
 
 describe("XML->JSON Parser", () => {
   describe("flattenCollectionDicts", () => {
-    const fn = flattenCollectionDicts;
+    const fn = flattenCollectionDictsRecursively;
     const data = {
-      "2": {
+      "1": {
         test: "B",
       },
-      "3": {
+      "2": {
         test: "C",
       },
-      "1": {
+      "0": {
         test: "A",
       },
     };
-    test("Should flatten when numeric contiguous keys start from 1", () => {
+    test("Should flatten when numeric contiguous keys start from 0", () => {
       const result = fn(data);
 
       // Compile-time check
@@ -47,17 +47,50 @@ describe("XML->JSON Parser", () => {
       expect(result).toEqual(input);
     });
 
-    test("Should flatten recursively", () => {
+    test("Should flatten recursively (simple)", () => {
       const input = { grandparent: { parent: data } };
       const result = fn(input);
 
-      expectTypeOf(result).toBeArray;
-      expect(Array.isArray(result)).toBe(true);
+      expectTypeOf(result).not.toBeArray;
+      expect(typeof result).toBe("object");
+
+      // 'grandparent' remains, but 'parent' is converted to array
+      expect(Array.isArray(result.grandparent.parent)).toBe(true);
 
       // Verify nested flattening actually happened
-      expect(result.parent).toEqual([
-        [{ test: "A" }, { test: "B" }, { test: "C" }],
+      expect(result.grandparent.parent).toEqual([
+        { test: "A" },
+        { test: "B" },
+        { test: "C" },
       ]);
+    });
+
+    test("Should flatten recursively with multiple nested numeric-keyed dicts", () => {
+      const input = {
+        "0": data,
+        "1": data,
+        "2": { ...data, a: false },
+      };
+
+      const result = fn(input);
+
+      expect(Array.isArray(result)).toBe(true);
+
+      expect(Array.isArray(result[0])).toBe(true);
+      expect(Array.isArray(result[1])).toBe(true);
+
+      // Key "3" has an extra non-numeric key 'a', so expect normal object
+      expect(typeof result[2]).toBe("object");
+      expect(result[2].a).toBe(false);
+
+      // Validate contents converted to arrays and order preserved for "1" and "2"
+      expect(result[0]).toEqual([{ test: "A" }, { test: "B" }, { test: "C" }]);
+      expect(result[1]).toEqual([{ test: "A" }, { test: "B" }, { test: "C" }]);
+
+      // Contents of "3" should match input but with numeric key dicts flattened
+      expect(result[2]["0"]).toEqual({ test: "A" });
+      expect(result[2]["1"]).toEqual({ test: "B" });
+      expect(result[2]["2"]).toEqual({ test: "C" });
     });
   });
 });
