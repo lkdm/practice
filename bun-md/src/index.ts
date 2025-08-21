@@ -87,6 +87,20 @@ if (titleInput) {
 
     document.title = sanitized || "Untitled";
   });
+
+  titleInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      // Move to next focusable element: assume editor textarea is first child of OverType container
+      const editorArea = document.querySelector(
+        "#editor textarea",
+      ) as HTMLTextAreaElement | null;
+      if (editorArea) {
+        editorArea.focus();
+        editorArea.setSelectionRange(0, 0);
+      }
+    }
+  });
 }
 
 const loadButton = document.getElementById("loadButton");

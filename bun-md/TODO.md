@@ -1,6 +1,8 @@
 # Runepad TODO
 
 TODO:
+
+- [x] Spellcheck
 - [ ] Dark/light mode
 - [ ] Toggle on/off persist storage in indexdb
 - [ ] Add YAML markdown to be added to each document
@@ -8,6 +10,7 @@ TODO:
 - [ ] Proper icons
 
 Stetch goals
+
 - [ ] Dynamically change favicon depending on state
 - [ ] Export/share/print
 - [ ] Set document width
