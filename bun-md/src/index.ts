@@ -39,6 +39,10 @@ const [editor] = new OverType("#editor", {
   autofocus: true,
   minHeight: "90vh",
   autoResize: true,
+  textareaProps: {
+    autocomplete: true,
+    spellcheck: "default",
+  },
   onChange: (value, instance) => {
     console.log("Content changed:", value);
     // Call autosave or other logic here using value
