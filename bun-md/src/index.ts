@@ -3,7 +3,6 @@ import OverType from "overtype";
 const DB_NAME = "markdownEditorDB";
 const DB_STORE = "documents";
 
-// Your IndexedDB save function (as described earlier)
 async function saveDocument(id: string, content: string, title: string) {
   const db = await openDB();
   return new Promise<void>((resolve, reject) => {
@@ -24,7 +23,6 @@ function debounce<F extends (...args: any[]) => void>(fn: F, delay: number) {
   };
 }
 
-// Use debounce on your save function
 const saveAutosave = debounce(async (content: string, title: string) => {
   try {
     await saveDocument("autosave", content, title);

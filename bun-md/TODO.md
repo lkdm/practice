@@ -3,10 +3,14 @@
 TODO:
 
 - [x] Spellcheck
+- [x] Favicon
+- [x] Key shortcuts
+- [x] Basic print; remove UI elements
+- [ ] Deploy
 - [ ] Dark/light mode
 - [ ] Toggle on/off persist storage in indexdb
 - [ ] Add YAML markdown to be added to each document
-- [ ] Key bindings
+- [ ] Customisable key shortcuts
 - [ ] Proper icons
 
 Stetch goals
