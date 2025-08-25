@@ -8,50 +8,23 @@ use std::{
     rc::Rc,
 };
 
+use bon::Builder;
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 use uuid::Uuid;
 
-#[derive(Clone, Serialize)]
-pub struct CreateDocumentRequest {
-    text: String,
-}
-
-#[derive(Debug, Error)]
-#[error("could not create document: {0}")]
-pub struct CreateDocumentError(#[source] Box<dyn std::error::Error>);
-
-#[derive(Clone, Serialize)]
-pub struct UpdateDocumentRequest {
+/// A Document owns the content, the file state, and any other metadata linked to it
+#[derive(Builder, Clone)]
+pub struct Document {
+    #[builder(default, into)]
     id: DocumentId,
-    text: String,
+    #[builder(default, into)]
+    title: Title,
+    #[builder(default, into)]
+    text: Rope,
+    #[builder(default = SavedState::New)]
+    state: SavedState,
 }
-
-#[derive(Debug, Error)]
-#[error("could not update document: {0}")]
-pub struct UpdateDocumentError(#[source] Box<dyn std::error::Error>);
-
-#[derive(Clone, Serialize)]
-pub struct GetDocumentRequest {
-    id: DocumentId,
-}
-
-#[derive(Debug, Error)]
-#[error("could not get document: {0}")]
-pub struct GetDocumentError(#[source] Box<dyn std::error::Error>);
-
-#[derive(Clone, Serialize)]
-pub struct ListDocumentsRequest {}
-
-#[derive(Debug, Error)]
-#[error("could not list documents: {0}")]
-pub struct ListDocumentsError(#[source] Box<dyn std::error::Error>);
-
-const MAX_TITLE_LEN: usize = 50;
-
-/// Shareable reference to a [`Document`] with interior mutability
-pub type SharedDocument = Rc<RefCell<Document>>;
 
 /// DocumentId - References a document
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
@@ -77,7 +50,7 @@ impl Default for DocumentId {
     }
 }
 
-/// The title of a document
+#[derive(Debug, Clone)]
 pub struct Title(String);
 
 impl Deref for Title {
@@ -90,7 +63,7 @@ impl Deref for Title {
 
 impl Title {
     pub fn new(title: &str) -> Self {
-        let truncated: String = title.chars().take(MAX_TITLE_LEN).collect();
+        let truncated: String = title.chars().take(50).collect();
         Self(truncated)
     }
 
@@ -105,181 +78,10 @@ impl Default for Title {
     }
 }
 
-pub struct Metadata {
-    title: Title,
-}
-
-impl Default for Metadata {
-    fn default() -> Self {
-        Self {
-            title: Title::default(),
-        }
-    }
-}
-
 /// The state the file is in
 #[derive(Debug, Clone)]
-pub enum FileState {
-    Saved(PathBuf),
-    Modified(PathBuf),
+pub enum SavedState {
     New,
-}
-
-impl FileState {
-    //! Outlines legal moves; you cannot go from modified -> saved, for example
-
-    /// Transition from New -> Saved
-    pub fn save(self, path: PathBuf) -> FileState {
-        FileState::Saved(path)
-    }
-
-    /// Transition from Saved -> Modified
-    pub fn modify(self) -> Option<FileState> {
-        match self {
-            FileState::Saved(path) => Some(FileState::Modified(path)),
-            _ => None, // New cannot go directly to Modified
-        }
-    }
-
-    /// Transition from Modified -> Saved (after saving)
-    pub fn save_modified(self) -> Option<FileState> {
-        match self {
-            FileState::Modified(path) => Some(FileState::Saved(path)),
-            _ => None,
-        }
-    }
-}
-
-impl Default for FileState {
-    fn default() -> Self {
-        Self::New
-    }
-}
-
-/// A Document owns the content, the file state, and any other metadata linked to it
-pub struct Document {
-    id: DocumentId,
-    state: FileState,
-    text: Rope,
-    metadata: Metadata,
-}
-
-impl Document {
-    pub fn new(id: DocumentId) -> Self {
-        Self {
-            id,
-            state: FileState::New,
-            text: Rope::new(),
-            metadata: Metadata::default(),
-        }
-    }
-
-    pub fn id(&self) -> &DocumentId {
-        &self.id
-    }
-
-    pub fn text(&self) -> &Rope {
-        &self.text
-    }
-
-    pub fn open(id: DocumentId, path: PathBuf) -> Result<Self, std::io::Error> {
-        let file = std::fs::File::open(&path)?;
-        let reader = BufReader::new(file);
-        let rope = Rope::from_reader(reader)?;
-        // TODO: Parse metadata
-        // TODO: Add error type for metadata parse failure
-        Ok(Self {
-            id,
-            state: FileState::Saved(path),
-            text: rope,
-            metadata: Metadata::default(),
-        })
-    }
-
-    pub fn update_text(&mut self, new_text: &str) {
-        self.text = Rope::from_str(new_text);
-    }
-
-    pub fn save(&mut self) -> Result<(), std::io::Error> {
-        match self.state {
-            FileState::Saved(_) => {
-                // If the document is already saved, we can simply return Ok
-                Ok(())
-            }
-            FileState::Modified(ref path) => {
-                // Open the file for writing
-                let file = File::create(path)?; // Use create to overwrite the file
-                let mut writer = BufWriter::new(file);
-
-                // Write the content of the Rope to the file
-                self.text.write_to(&mut writer)?;
-
-                // Flush the writer to ensure all data is written
-                writer.flush()?;
-
-                // Update the state to Saved
-                self.state = FileState::Saved(path.clone());
-
-                Ok(())
-            }
-            FileState::New => {
-                // Return an error indicating that the user should choose a path
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Document is new, please specify a save path.",
-                ))
-            }
-        }
-    }
-
-    pub fn save_as(&mut self, new_path: PathBuf) -> Result<(), std::io::Error> {
-        // Update the state to reflect the new path
-        self.state = FileState::Modified(new_path.clone());
-
-        // Call the save method to perform the actual saving
-        self.save() // This will handle the writing to the new path
-    }
-}
-
-impl Default for Document {
-    fn default() -> Self {
-        Self::new(DocumentId::default())
-    }
-}
-
-pub struct DocumentManager {
-    documents: BTreeMap<DocumentId, SharedDocument>,
-}
-
-impl DocumentManager {
-    pub fn new() -> Self {
-        Self {
-            documents: BTreeMap::new(),
-        }
-    }
-
-    pub fn add_document(&mut self) -> SharedDocument {
-        let document = Rc::new(RefCell::new(Document::default()));
-        self.documents
-            .insert(DocumentId::default(), document.clone());
-        document
-    }
-
-    pub fn remove_document(&mut self, id: DocumentId) {
-        self.documents.remove(&id);
-    }
-
-    pub fn get_document(&self, id: DocumentId) -> Option<SharedDocument> {
-        self.documents.get(&id).cloned() // Return a clone of the Rc
-    }
-
-    pub fn list_documents(&self) -> Vec<SharedDocument> {
-        self.documents.values().cloned().collect()
-    }
-}
-
-impl Default for DocumentManager {
-    fn default() -> Self {
-        Self::new()
-    }
+    NoChanges,
+    Changed,
 }

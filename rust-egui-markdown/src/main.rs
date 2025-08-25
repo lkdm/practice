@@ -1,6 +1,9 @@
 use eframe::egui::{self, CentralPanel, ComboBox, ScrollArea, Ui};
 
-use crate::{doc::DocumentManager, editor::EasyMarkEditor};
+use crate::{
+    doc::{Document, DocumentBuilder},
+    editor::EasyMarkEditor,
+};
 
 pub mod doc;
 pub mod editor;
@@ -20,15 +23,17 @@ fn main() -> Result<(), eframe::Error> {
     )
 }
 
-struct MarkdownEditor {
-    document_manager: DocumentManager,
+struct MarkdownEditor<DR> {
+    document_repository: DR,
+    document: Document,
     editor: EasyMarkEditor,
 }
 
-impl Default for MarkdownEditor {
+impl Default for MarkdownEditor<DR> {
     fn default() -> Self {
         Self {
-            document_manager: DocumentManager::default(),
+            document_repository: FileSystem::new(),
+            document: Document::builder().build(),
             editor: EasyMarkEditor::default(),
         }
     }
@@ -56,13 +61,40 @@ impl Default for MarkdownEditor {
 //     }
 // }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AppCommand {
+    New,
+    Open,
+    Save,
+    Close,
+    // Add other commands as needed
+}
+
+impl MarkdownEditor {
+    fn handle_command(&mut self, cmd: AppCommand) {
+        match cmd {
+            AppCommand::New => {
+                // Your logic to handle new document, e.g., clearing editor or closing window
+                // Example: self.clear_document();
+            }
+            AppCommand::Open => {
+                // Open logic
+            }
+            AppCommand::Save => {
+                // Save logic
+            }
+            AppCommand::Close => {}
+        }
+    }
+}
+
 impl eframe::App for MarkdownEditor {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("New").clicked() {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                        self.handle_command(AppCommand::New);
                     }
                     if ui.button("Open").clicked() {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
