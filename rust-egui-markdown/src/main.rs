@@ -1,8 +1,9 @@
-use eframe::egui::{self, CentralPanel, ComboBox, Ui};
+use eframe::egui::{self, CentralPanel, ComboBox, ScrollArea, Ui};
 
-use crate::doc::DocumentManager;
+use crate::{doc::DocumentManager, editor::EasyMarkEditor};
 
 pub mod doc;
+pub mod editor;
 pub mod fs;
 
 fn main() -> Result<(), eframe::Error> {
@@ -21,12 +22,14 @@ fn main() -> Result<(), eframe::Error> {
 
 struct MarkdownEditor {
     document_manager: DocumentManager,
+    editor: EasyMarkEditor,
 }
 
 impl Default for MarkdownEditor {
     fn default() -> Self {
         Self {
             document_manager: DocumentManager::default(),
+            editor: EasyMarkEditor::default(),
         }
     }
 }
@@ -90,10 +93,7 @@ impl eframe::App for MarkdownEditor {
         });
 
         CentralPanel::default().show(ctx, |ui| {
-            ui.label("This is directly on the main frame without a window.");
-            // self.show_file_picker(ui);
-
-            // ui.text_edit_multiline(&mut self.markdown_input);
+            self.editor.ui(ui);
         });
 
         ctx.request_repaint(); // keep UI responsive
