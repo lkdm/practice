@@ -10,6 +10,10 @@ help: ## Display this help screen
 
 .PHONY: run
 
+install: ## Install dependencies
+	@echo "Installing Tailwind"
+	npm install -g tailwindcss
+
 run: ## Develop the application
 	@echo "Running the app"
 	trunk serve --port 30400 --open
