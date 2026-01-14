@@ -28,6 +28,8 @@ pub mod user;
 pub type Result<T, E = crate::error::Error> = std::result::Result<T, E>;
 pub type Db = sqlx::SqlitePool;
 
+use std::path::Path;
+
 #[derive(Clone)]
 pub struct AppState {
     db: Db,

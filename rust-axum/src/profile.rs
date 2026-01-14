@@ -140,7 +140,8 @@ impl ProfileContext {
     }
 
     pub async fn delete(&self, id: Identifier) -> sqlx::Result<()> {
-        sqlx::query!(r#"DELETE FROM profile WHERE id = ?"#, id)
+        sqlx::query(r#"DELETE FROM profile WHERE id = ?"#)
+            .bind(id)
             .execute(&self.db)
             .await?;
         Ok(())

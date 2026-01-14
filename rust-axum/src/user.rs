@@ -144,7 +144,8 @@ impl UserContext {
 
     /// Hard-deletes the user and cascades to all connected records
     pub async fn delete(&self, id: Identifier) -> sqlx::Result<()> {
-        sqlx::query!(r#"DELETE FROM user WHERE id = ?"#, id)
+        sqlx::query(r#"DELETE FROM user WHERE id = ?"#)
+            .bind(id)
             .execute(&self.db)
             .await?;
         Ok(())

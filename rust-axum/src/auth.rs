@@ -61,6 +61,7 @@ pub async fn check_authentication(mut req: Request, next: Next) -> crate::Result
     let claims = Claims {
         sub: "1".to_string(),
         email: Some("hello@hello.hello".to_string()),
+        exp: 0,
     };
 
     req.extensions_mut().insert(claims);
