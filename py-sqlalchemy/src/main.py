@@ -2,9 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from data import Base
 from data.user import User, get_users
-from data.product import Product, get_products
-from data.trade import Trade
-from typing import List, Any
+from data.product import Product, get_products, get_product_by_product_code
+from data.trade import Trade, Side
+from datetime import date
 
 def seed(db: Session):
 
@@ -19,9 +19,10 @@ def seed(db: Session):
         Product(product_code="JPY/USD"),
     ]
     db.add_all(products)
+    today = date.today()
     trades = [
-        Trade(product=products[0]),
-        Trade(product=products[1])
+        Trade(product=products[0], business_date=today, side=Side.B, qty=10),
+        Trade(product=products[1], business_date=today, side=Side.S, qty=20)
     ]
     db.add_all(trades)
     db.commit()
@@ -33,6 +34,9 @@ def main():
     with Session(engine) as session:
         seed(session) 
 
+        product = get_product_by_product_code(session, "AUD/USD")
+        if product:
+            print(product.trades)
 
         users = get_users(session)
         print(users)

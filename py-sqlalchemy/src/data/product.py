@@ -17,6 +17,18 @@ class Product(Base):
 
     trades: Mapped[List["Trade"]] = relationship(back_populates="product")
 
+    def __repr__(self) -> str:
+        return f"Product(id={self.id}, product_code={self.product_code})"
+
+    def __str__(self) -> str:
+        return self.product_code
+
 def get_products(db: Session) -> List[Product]:
     return db.query(Product).all()
 
+def get_product_by_product_code(db: Session, name: str) -> Product | None:
+    return (
+        db.query(Product)
+        .filter(Product.product_code == name)
+        .first()
+    )
