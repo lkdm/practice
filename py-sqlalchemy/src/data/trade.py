@@ -11,7 +11,7 @@ class Trade(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     product_id: Mapped[int] = mapped_column(ForeignKey(Product.id))
 
-    product = relationship("Product", back_populates="trades")
+    product: Mapped[List["Product"]] = relationship(back_populates="trades")
 
 def get_trades(db: Session) -> List[Trade]:
     return db.query(Trade).all()
