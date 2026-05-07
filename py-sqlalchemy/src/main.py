@@ -1,10 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from data import Base
-from data.user import get_users
-from data.product import get_products, get_product_by_product_code
+from shared import Base
+from trading import run as run_trades
 
-from trades import run as run_trades
 
 def main():
     engine = create_engine("sqlite:///:memory:")

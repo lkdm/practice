@@ -3,7 +3,7 @@ from sqlalchemy.orm import mapped_column, relationship
 from typing import Optional, List
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import Session
-from data import Base
+from shared import Base
 
 # Fixes: circular import issue
 from typing import TYPE_CHECKING

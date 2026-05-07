@@ -5,8 +5,8 @@ from enum import Enum
 from sqlalchemy import Integer, String, ForeignKey, Date
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Session
-from data import Base
-from data.product import Product
+from shared import Base
+from trades.product import Product
 from datetime import date
 
 class Side(str, Enum):

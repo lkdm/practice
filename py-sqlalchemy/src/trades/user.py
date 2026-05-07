@@ -3,7 +3,7 @@ from sqlalchemy.orm import mapped_column
 from typing import Optional, List
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import Session
-from data import Base
+from shared import Base
 
 class User(Base):
     __tablename__ = "user"
