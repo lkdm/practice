@@ -3,7 +3,7 @@ from sqlalchemy.orm import mapped_column, relationship
 from typing import Optional, List
 from sqlalchemy import Integer, String, ForeignKey, Date
 from sqlalchemy.orm import Session
-from shared import Base
+from shared import ArchivedAtMixin, Base, TimestampMixin
 from sqlalchemy import Integer, String, ForeignKey, Date
 from datetime import datetime, date
 
@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .unit import Unit
 
-class Property(Base):
+class Property(TimestampMixin, ArchivedAtMixin, Base):
     "A property"
     __tablename__ = "properties"
 
