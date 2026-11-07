@@ -4,23 +4,22 @@ use gpui_kit::component::input::{Textarea, TextareaState};
 use gpui_kit::component::{Theme, ThemeMode};
 use gpui_kit::*;
 
-struct HelloWorld {
-    message: Entity<TextareaState>,
+use crate::editor::TextEditor;
+
+pub mod editor;
+
+struct App {
+    editor: Entity<TextEditor>,
 }
 
-impl HelloWorld {
-    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let message = cx.new(|cx| {
-            TextareaState::new(window, cx)
-                .auto_grow(2, 8)
-                .placeholder("Write a message...")
-        });
-
-        Self { message }
+impl App {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let editor = cx.new(|cx| TextEditor::new(window, cx));
+        Self { editor }
     }
 }
 
-impl Render for HelloWorld {
+impl Render for App {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .bg(cx.theme().background)
@@ -32,14 +31,7 @@ impl Render for HelloWorld {
             .p_4()
             .gap_3()
             .items_center()
-            .child(
-                div().flex_1().min_h_0().w(px(640.0)).child(
-                    Textarea::new(&self.message)
-                        .h_full()
-                        .bordered(false)
-                        .bg(cx.theme().background),
-                ),
-            )
+            .child(self.editor.clone())
             .child(Button::new("send").primary().label("Send").on_click({
                 move |_, _, _| {
                     println!("Send clicked!");
@@ -54,7 +46,7 @@ fn main() {
 
         open_window(WindowOptions::default(), cx, |window, cx| {
             Theme::change(ThemeMode::Dark, None, cx);
-            cx.new(|cx| HelloWorld::new(window, cx))
+            cx.new(|cx| App::new(window, cx))
         })
         .expect("Failed to open window");
     });
