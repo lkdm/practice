@@ -1,6 +1,5 @@
 use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::component::button::{Button, ButtonVariants};
-use gpui_kit::component::input::{Textarea, TextareaState};
 use gpui_kit::component::{Theme, ThemeMode};
 use gpui_kit::*;
 
@@ -43,6 +42,9 @@ impl Render for App {
 fn main() {
     application().with_assets(assets::Assets).run(|cx| {
         init(cx);
+
+        let families = cx.text_system().all_font_names();
+        println!("Available font families: {families:?}");
 
         open_window(WindowOptions::default(), cx, |window, cx| {
             Theme::change(ThemeMode::Dark, None, cx);
